@@ -1,4 +1,4 @@
-# Orbit Next v3.2 — Next.js + Liquid Glass
+# Orbit Next v3.3 — Next.js + Liquid Glass
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -52,6 +52,15 @@ háptica y título vivo con la cuota.**
 - **IA multi-proveedor**: selector en modal con **11 proveedores** (OpenAI, Claude · Anthropic, DeepSeek, Grok · xAI, GLM · Z.ai, Gemini, Mistral, OpenRouter, Groq, Ollama local y endpoint personalizado); campo de **API Key con ojo mostrar/ocultar** mientras se escribe; **URL Base opcional** y **clave adicional** para gateways/proxies cuando se usa URL personalizada. Reglas de seguridad: la clave guardada **nunca se vuelve a mostrar** (el campo siempre nace vacío; solo se reemplaza).
 - **Scopes reales del token → funciones**: la app lee `X-OAuth-Scopes`, mapea cada scope a funciones en lenguaje natural (tarjeta «Scopes y funciones de tu token» en Control Center), **oculta del menú las secciones que el token no permite** y muestra en cada página un aviso explicando qué scope falta y por qué. Los tokens fine-grained (sin cabecera de scopes) se detectan y se habilitan con nota informativa.
 - El compositor del chat ya no queda tapado por la barra flotante.
+
+
+## Novedades v3.3
+
+- **GlassNav del vendor de vuelta, sin overrides**: la barra vuelve a ser el componente `GlassNav` de `@zakisheriff/liquid-glass` tal y como está diseñado. La causa real del bug del 4º icono era geométrica: el componente reserva **68px por pestaña** (`--lg-item-w`); con 8 pestañas el track necesita 552px y en un móvil de 375px desbordaba, desalineando la lente de forma progresiva. Ahora la barra respeta esa geometría con sets por viewport: **8 pestañas con etiquetas (≥640px), 5 + «Más» (≥432px), 4 + «Más» (≥364px) y 3 + «Más» por debajo** — la lente queda alineada al 100% en cada pestaña (verificado por solape 68/68 en todas).
+- **Hoja «Más»** (patrón iOS) con las secciones fuera de la barra, icono + descripción, sobre GlassSheet.
+- **Modal de proveedores con scroll real**: `.picker-list` ahora es scrollable (`overflow-y: auto`, `touch-action: pan-y`, `overscroll-behavior: contain`) — no interfiere con el arrastre del sheet (el gesto vive en `.lg-sheet__grabber-zone`); se llega al fondo de los 11 proveedores sin cortes.
+- **Sección IA reordenada**: Proveedor → API Key → URL Base → Modelo con textos concisos; el ojo de mostrar/ocultar convive con el botón de limpiar (×) del vendor; tocar el ojo **no** guarda (preventDefault en mousedown) y la clave guardada sigue sin mostrarse jamás.
+- Compositor del chat re-ajustado a la altura de GlassNav (68px) para no quedar tapado.
 
 ## Rendimiento
 

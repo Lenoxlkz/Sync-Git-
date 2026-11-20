@@ -1,19 +1,20 @@
 'use client';
 
 /* AppShell: chrome de Orbit Next — topbar con logo original + búsqueda,
-   barra de navegación Liquid Glass propia (gota deslizante, sin desborde),
-   navegación filtrada por los scopes del token, toasts y bóveda. */
+   barra de navegación GlassNav (Liquid Glass del vendor, sin overrides:
+   en desktop 8 pestañas con etiquetas y en móvil 5 + «Más»/4 + «Más» para
+   que la lente respete su geometría de 68px por ítem), scopes → navegación,
+   toasts y bóveda. */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
+import { GlassNav, GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
 import { useOrbit, boot, applyAppearance, unlockVault, createVault, pushToast, openFicha } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
 import { capsFromScopes, type Cap } from '@/lib/scopes';
-import { LiquidNavBar } from './LiquidNavBar';
 import { ToastStack } from './Toast';
 import { Diag } from './bits';
-import { IcSearch, IcDownload, IcKey, IcUser, IcFolder, IcShield, IcLock, IcX } from './Icons';
+import { IcSearch, IcDownload, IcKey, IcUser, IcFolder, IcShield, IcLock, IcX, IcList } from './Icons';
 import {
   IcChat as IcChatNav, IcRepo as IcRepoNav, IcPR as IcPRNav, IcIssue as IcIssueNav,
   IcUpload as IcUploadNav, IcCode as IcCodeNav, IcSettings as IcSettingsNav, IcBook as IcBookNav,
@@ -48,6 +49,20 @@ const NAV_ICONS: Record<string, React.ReactNode> = {
   Subir: <IcUploadNav />, Código: <IcCodeNav />, Control: <IcSettingsNav />, Guía: <IcBookNav />,
 };
 
+/* GlassNav reserva --lg-item-w: 68px por pestaña (más 4px de padding por
+   lado) y «Más» ocupa un slot también: 8 pestañas = 552px (≥640px de
+   viewport), 5+Más = 416px (≥432px), 4+Más = 348px (≥364px) y 3+Más =
+   280px por debajo. El resto se abre en un GlassSheet. */
+const SET5 = ['/', '/repos/', '/pulls/', '/issues/', '/explorer/'];
+const SET4 = ['/', '/repos/', '/pulls/', '/control/'];
+const SET3 = ['/', '/repos/', '/control/'];
+const MORE_SUB: Record<string, string> = {
+  Subir: 'Envía archivos y carpetas con verificación',
+  Código: 'Explora y edita el código de un repositorio',
+  Control: 'Conexión, IA, apariencia y scopes del token',
+  Guía: 'Comandos y conceptos de Git en Orbit',
+};
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const state = useOrbit();
   const pathname = usePathname() || '/';
@@ -55,6 +70,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [installEv, setInstallEv] = useState<{ prompt: () => void } | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [gs, setGs] = useState('');
+  const [vw, setVw] = useState(0);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  /* viewport para elegir el set de pestañas (SSR-safe: 0 hasta montar) */
+  useEffect(() => {
+    const on = () => setVw(window.innerWidth);
+    on();
+    window.addEventListener('resize', on);
+    return () => window.removeEventListener('resize', on);
+  }, []);
 
   /* arranque: restaura sesión/bóveda/prefs una sola vez */
   useEffect(() => { boot().catch(() => { /* silencio */ }); }, []);
@@ -101,8 +126,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     [state.connected, state.scopes],
   );
   const visibleNav = useMemo(() => NAV.filter(n => !n.cap || !caps || caps.map[n.cap]), [caps]);
-  const activeIndex = visibleNav.findIndex(n => n.href === '/' ? pathname === '/' : pathname.startsWith(n.href));
-  const current = visibleNav[activeIndex] ?? visibleNav[0] ?? NAV[0];
+
+  /* set de pestañas según el ancho: 8 / 5+Más / 4+Más — GlassNav mantiene
+     su geometría de 68px por ítem y la lente queda siempre alineada */
+  type NavEntry = { href: string; label: string; cap: Cap | null; more?: boolean };
+  const primaryHrefs = vw >= 640 ? null : vw >= 432 ? SET5 : vw >= 364 ? SET4 : SET3;
+  const { navItems, moreItems } = useMemo<{ navItems: NavEntry[]; moreItems: NavEntry[] }>(() => {
+    if (!primaryHrefs) return { navItems: visibleNav, moreItems: [] };
+    const prim = visibleNav.filter(n => primaryHrefs.includes(n.href));
+    const rest = visibleNav.filter(n => !primaryHrefs.includes(n.href));
+    const items: NavEntry[] = [...prim];
+    if (rest.length) items.push({ href: '', label: 'Más', cap: null, more: true });
+    return { navItems: items, moreItems: rest };
+  }, [visibleNav, primaryHrefs]);
+
+  const isMoreActive = !navItems.some(n => n.href && (n.href === '/' ? pathname === '/' : pathname.startsWith(n.href)));
+  const activeIndex = isMoreActive
+    ? Math.max(0, navItems.findIndex(n => n.more))
+    : navItems.findIndex(n => n.href && (n.href === '/' ? pathname === '/' : pathname.startsWith(n.href)));
+  const current = visibleNav.find(n => n.href === '/' ? pathname === '/' : pathname.startsWith(n.href)) ?? visibleNav[0] ?? NAV[0];
 
   return (
     <div className="app-frame">
@@ -110,10 +152,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="topbar">
           <Link href="/" className="tb-brand" aria-label="GitHub Orbit">
             <OrbitLogo size={26} />
-            <span>
-              <b>GitHub Orbit</b>
-              <small>Centro de mando · v3.2</small>
-            </span>
+          <span>
+            <b>GitHub Orbit</b>
+            <small>Centro de mando · v3.3</small>
+          </span>
           </Link>
           <div className="tb-title"><h1>{current.label}</h1></div>
           <div className="tb-right">
@@ -134,15 +176,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="view">{children}</main>
       </div>
 
-      {/* barra de navegación Liquid Glass: gota deslizante con acento, igual en todos los iconos */}
+      {/* barra de navegación Liquid Glass (GlassNav del vendor, sin overrides) */}
       <div className="bottom-nav">
-        <LiquidNavBar
-          items={visibleNav.map(n => ({ label: n.label, icon: NAV_ICONS[n.label] }))}
-          activeIndex={activeIndex < 0 ? 0 : activeIndex}
-          onChange={i => router.push(visibleNav[i].href)}
-          ariaLabel="Secciones"
-        />
+        {vw > 0 && (
+          <GlassNav
+            items={navItems.map(n => ({ label: n.label, icon: n.more ? <IcList /> : NAV_ICONS[n.label] }))}
+            activeIndex={activeIndex < 0 ? 0 : activeIndex}
+            onChange={i => {
+              const n = navItems[i];
+              if (!n) return;
+              if (n.more) { setMoreOpen(true); return; }
+              router.push(n.href);
+            }}
+            aria-label="Secciones"
+          />
+        )}
       </div>
+
+      {/* hoja «Más»: secciones fuera de la barra en pantallas estrechas */}
+      <GlassSheet open={moreOpen} onClose={() => setMoreOpen(false)} detents={['medium', 'large']} aria-label="Más secciones">
+        <div className="sheet-head"><h3>Más secciones</h3>
+          <GlassButton icon={<IcX size={15} />} aria-label="Cerrar" size="sm" onClick={() => setMoreOpen(false)} />
+        </div>
+        <p className="sheet-text">Estas secciones no caben en la barra de esta pantalla; todas mantienen sus permisos por scope.</p>
+        <div className="picker-list">
+          {moreItems.map(n => (
+            <button key={n.href} className={`picker-item picker-item--nav${pathname.startsWith(n.href) ? ' sel' : ''}`}
+              onClick={() => { setMoreOpen(false); router.push(n.href); }}>
+              <span className="picker-ico" aria-hidden="true">{NAV_ICONS[n.label]}</span>
+              <span className="picker-txt"><b>{n.label}</b><small>{MORE_SUB[n.label] || ''}</small></span>
+            </button>
+          ))}
+        </div>
+      </GlassSheet>
 
       {/* búsqueda global de repos */}
       <GlassSheet open={searchOpen} onClose={() => { setSearchOpen(false); setGs(''); }} detents={['medium', 'large']} aria-label="Buscar repositorios">

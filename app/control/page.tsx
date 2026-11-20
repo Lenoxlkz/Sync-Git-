@@ -239,33 +239,33 @@ export default function ControlPage() {
         </GlassCard>
       </Section>
 
-      <Section title="Inteligencia artificial" sub="Una opción debajo de la otra: proveedor → clave → URL base → modelo. Las claves viajan solo al proveedor elegido">
+      <Section title="Inteligencia artificial" sub="Proveedor → API Key → URL Base → Modelo · las claves se quedan solo en este dispositivo">
         <GlassCard padding="18px">
-          <Row label="Proveedor de preferencia" sub={prov.note || 'Toca para elegir el servicio con el que quiere hablar Orbit'}>
+          <Row label="Proveedor" sub="Toca para elegir entre 11 servicios compatibles">
             <GlassButton icon={<IcList size={14} />} onClick={() => setProvOpen(true)}>
               {prov.label}
             </GlassButton>
           </Row>
-          <Row label="API Key del proveedor" sub="Mientras escribes puedes mostrarla u ocultarla con el ojo; una vez guardada nunca se vuelve a mostrar — solo se reemplaza escribiendo una nueva">
+          <Row label="API Key" sub="Muéstrala u ocúltala mientras escribes · guardada, nunca se vuelve a mostrar — se reemplaza escribiendo una nueva">
             <KeyField
               saved={!!p.aiKey}
               placeholder={prov.keyHint}
-              onCommit={v => { setPrefs({ aiKey: v }); pushToast('Clave guardada', 'ok', 'No se volverá a mostrar; escribe una nueva para reemplazarla'); }}
+              onCommit={v => { setPrefs({ aiKey: v }); pushToast('Clave guardada', 'ok', 'No se volverá a mostrar'); }}
             />
           </Row>
-          <Row label="URL Base (opcional · personalizada)" sub={'Déjalo vacío para usar la oficial: ' + (prov.baseUrl || '—')}>
+          <Row label="URL Base (opcional)" sub="Déjala vacía para usar la oficial del proveedor">
             <GlassInput placeholder={prov.baseUrl || 'https://tu-endpoint/v1'} value={p.aiBaseUrl} onChange={e => setPrefs({ aiBaseUrl: e.target.value })} aria-label="URL Base personalizada" className="mono" />
           </Row>
           {p.aiBaseUrl.trim() ? (
-            <Row label="API Key adicional · URL personalizada" sub="Si tu endpoint o proxy usa su propia clave, escríbela aquí: se enviará como Authorization en lugar de la clave del proveedor">
+            <Row label="API Key adicional (gateway)" sub="Clave propia de tu URL personalizada — se envía como Authorization en lugar de la del proveedor">
               <KeyField
                 saved={!!p.aiGatewayKey}
-                placeholder="clave del gateway / proxy"
+                placeholder="clave del gateway"
                 onCommit={v => { setPrefs({ aiGatewayKey: v }); pushToast('Clave adicional guardada', 'ok', 'No se volverá a mostrar'); }}
               />
             </Row>
           ) : null}
-          <Row label="Modelo" sub={'Por defecto: ' + (prov.model || 'define el nombre exacto del modelo de tu endpoint')}>
+          <Row label="Modelo" sub={prov.model ? 'Por defecto: ' + prov.model : 'Nombre exacto del modelo de tu endpoint'}>
             <GlassInput placeholder={prov.model || 'nombre-del-modelo'} value={p.aiModel} onChange={e => setPrefs({ aiModel: e.target.value })} aria-label="Modelo" />
           </Row>
           <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -275,7 +275,7 @@ export default function ControlPage() {
             </GlassButton>
           </div>
           <p className="tiny" style={{ marginTop: 10 }}>
-            Seguridad: las claves se guardan en este dispositivo, nunca se muestran tras guardarse y viajan por HTTPS directamente al proveedor — Orbit no tiene servidor intermediario.
+            Las claves viajan por HTTPS directamente al proveedor elegido — Orbit no tiene servidor intermediario.
           </p>
         </GlassCard>
       </Section>
@@ -379,10 +379,11 @@ function EyeIcon({ off }: { off?: boolean }) {
 }
 
 /** Campo de clave con reglas de seguridad:
-    · mientras se escribe → botón de ojo para mostrar/ocultar el borrador;
-    · al confirmar (enter o salir del campo) se guarda y el campo se vacía;
-    · la clave guardada jamás se renderiza — el campo siempre empieza vacío
-      y solo admite reemplazarla escribiendo una nueva. */
+    · el ojo (hermano del campo) muestra/oculta solo el borrador — el vendor
+      reserva el interior del campo para su propio botón de limpiar (×);
+    · tocar el ojo NO guarda: el mousedown con preventDefault evita el blur;
+    · confirmar (Enter o salir del campo) guarda y vacía el campo;
+    · la clave guardada jamás se renderiza — solo se puede reemplazar. */
 function KeyField({ saved, placeholder, onCommit }: {
   saved: boolean; placeholder: string; onCommit: (v: string) => void;
 }) {
@@ -396,7 +397,7 @@ function KeyField({ saved, placeholder, onCommit }: {
     <div className="keyfield">
       <GlassInput
         type={show ? 'text' : 'password'}
-        placeholder={saved ? '•••••• guardada — escribe una nueva para reemplazarla' : placeholder}
+        placeholder={saved ? '•••••• guardada · escribe para reemplazar' : placeholder}
         value={draft}
         onChange={e => setDraft(e.target.value)}
         onBlur={commit}
@@ -408,6 +409,7 @@ function KeyField({ saved, placeholder, onCommit }: {
         type="button" className="ibtn" style={{ opacity: draft ? 1 : .4 }}
         aria-label={show ? 'Ocultar clave' : 'Mostrar clave'}
         disabled={!draft}
+        onMouseDown={e => e.preventDefault()}
         onClick={() => setShow(s => !s)}
       >
         <EyeIcon off={!show} />
