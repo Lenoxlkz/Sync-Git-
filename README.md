@@ -10,29 +10,30 @@ navegador; el servidor no guarda nada.
 ## Estructura
 
 ```
-app/          páginas (Chat, Repos, PRs, Issues, Explorer, Control Center)
-components/   AppShell, iconos, toasts y piezas glass reutilizables
-lib/          GitHub API, upload delta, bóveda AES, IA, ZIP, NetKeep, store
-public/       PWA: manifest, service worker, iconos
-Dockerfile    build multi-stage (Node → nginx) para Render
-start.sh      nginx con Basic Auth opcional + /healthz
-render.yaml   Blueprint de Render (servicio Docker + variables)
+app/                      páginas (Chat, Repos, PRs, Issues, Explorer, Control Center)
+components/               AppShell, iconos, toasts y piezas glass reutilizables
+lib/                      GitHub API, upload delta, bóveda AES, IA, ZIP, NetKeep, store
+public/                   PWA: manifest, service worker, iconos, .nojekyll
+.github/workflows/        deploy.yml — build y despliegue automático a GitHub Pages
+next.config.ts            export estático + basePath /Sync-Git- (GitHub Pages)
 ```
 
-## Despliegue en Render (2 minutos)
+## Despliegue en GitHub Pages (automático)
 
-1. Sube este repo a GitHub (el `.gitignore` ya excluye `node_modules/` y `out/`).
-2. En Render: **New → Blueprint** y elige el repo — detecta `render.yaml`.
-3. Rellena las dos variables (acceso exclusivo personal):
-   - `BASIC_AUTH_USER` · `BASIC_AUTH_PASS` — sin ellas el sitio queda abierto.
-4. Deploy. Health check: `/healthz`. Cada `git push` redespliega.
+1. Settings → Pages → **Build and deployment → Source: GitHub Actions**
+   (si ya se activó una vez por API no hace falta tocar nada).
+2. Cada `git push` a `main` lanza `.github/workflows/deploy.yml`:
+   `npm ci` → `next build` (export en `out/`) → deploy a Pages.
+3. URL pública: `https://lenoxlkz.github.io/Sync-Git-/`
 
-También funciona en cualquier hosting estático tras `npm run build` (carpeta
-`out/`), o local con:
+El `basePath: '/Sync-Git-'` de `next.config.ts` es imprescindible para Pages
+(sitio de proyecto, no de usuario): cambia el nombre del repo y cámbialo ahí.
+
+## Desarrollo local
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
+npm run dev        # http://localhost:3000/Sync-Git-/
 npm run build      # export estático en ./out
 ```
 

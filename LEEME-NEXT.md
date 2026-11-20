@@ -12,7 +12,7 @@ El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 | Glass casero (backdrop-filter) | **Liquid Glass real**: refracción Snell por bevel, lentes que magnifican, wobble jelly |
 | Controles propios | GlassButton · GlassSwitch · GlassSegmented · GlassSlider · GlassInput · GlassCard · GlassSheet · GlassNav |
 | PWA manual | PWA (SW + manifest + iconos) sobre el export estático |
-| Render con nginx | Igual: Docker multi-stage (build Node → nginx) + Basic Auth opcional |
+| Render con nginx | **GitHub Pages**: workflow de Actions → build → deploy automático |
 
 Todo el motor de GitHub se portó completo: **subida delta por SHA-1 con
 verificación ruta por ruta, sincronización espejo (sha:null), reintentos si la
@@ -34,21 +34,24 @@ háptica y título vivo con la cuota.**
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
-npm run build      # genera ./out (export estático)
+npm run dev        # http://localhost:3000/Sync-Git-/
+npm run build      # genera ./out (export estático, listo para Pages)
 ```
 
-## Despliegue en Render (uso exclusivo personal)
+## Despliegue en GitHub Pages
 
-1. Sube esta carpeta a un repo privado de GitHub.
-2. Render → **New → Web Service** → conecta el repo → el Dockerfile multi-stage
-   se detecta solo (build Node → nginx).
-3. Variables de entorno (acceso exclusivo personal):
-   - `BASIC_AUTH_USER` y `BASIC_AUTH_PASS` — sin ellas el sitio queda abierto.
-4. Health Check Path: `/healthz`. Cada `git push` redespliega.
+1. Pages ya configurado con **Source: GitHub Actions** (build_type `workflow`).
+2. Cada `git push` a `main` ejecuta `.github/workflows/deploy.yml`:
+   `npm ci` → `next build` → `actions/upload-pages-artifact` → `actions/deploy-pages`.
+3. URL: `https://lenoxlkz.github.io/Sync-Git-/` — `public/.nojekyll` evita que
+   Jekyll descarte la carpeta `_next/`.
 
-Alternativas: cualquier hosting estático sirve `out/` tal cual
-(vercel/Netlify/GitHub Pages), o `npm run start` en un servicio Node.
+El sitio es un **sitio de proyecto** (`/Sync-Git-`), por eso
+`next.config.ts` fija `basePath: '/Sync-Git-'` y `trailingSlash: true` (así
+`/repos/` resuelve a `repos/index.html` y los enlaces profundos nunca dan 404).
+El manifest usa rutas relativas y el service worker deduce la base de su propio
+scope, así que la PWA sigue instalable. Público por diseño: la app no tiene
+secretos en el servidor (el PAT va cifrado en el navegador de cada usuario).
 
 ## Componentes glass usados (mapa)
 
@@ -69,4 +72,4 @@ Control Center, sin flash gracias al script pre-paint en `layout.tsx`).
 - El PAT y la clave de IA **nunca** salen de tu navegador; viajan únicamente a
   api.github.com y al endpoint de tu proveedor de IA.
 - NetKeep apagable; se retira solo cuando la app hace trabajo real.
-- `npm ci` en Docker usa `package-lock.json` — está incluido tras el build.
+- `npm ci` en Actions usa `package-lock.json` — está incluido en el repo.

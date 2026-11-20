@@ -43,7 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   /* service worker + PWA */
   useEffect(() => {
     if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
-      navigator.serviceWorker.register('/sw.js').catch(() => { });
+      navigator.serviceWorker.register('/Sync-Git-/sw.js').catch(() => { });
     }
     const onInstall = (e: Event) => { e.preventDefault(); setInstallEv(e as unknown as { prompt: () => void }); };
     window.addEventListener('beforeinstallprompt', onInstall);

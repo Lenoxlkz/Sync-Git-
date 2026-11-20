@@ -6,8 +6,8 @@ import { AppShell } from '@/components/AppShell';
 export const metadata: Metadata = {
   title: 'GitHub Orbit — Centro de mando personal',
   description: 'Centro de administración personal de GitHub: chat con IA, repos, PRs, issues, subida delta verificada y sincronización espejo. Next.js + Liquid Glass.',
-  manifest: '/manifest.webmanifest',
-  icons: { icon: '/favicon.svg', apple: '/icons/icon-192.png' },
+  manifest: '/Sync-Git-/manifest.webmanifest',
+  icons: { icon: '/Sync-Git-/favicon.svg', apple: '/Sync-Git-/icons/icon-192.png' },
   appleWebApp: { capable: true, title: 'Orbit', statusBarStyle: 'black-translucent' },
 };
 

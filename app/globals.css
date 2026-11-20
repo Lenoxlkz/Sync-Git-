@@ -81,7 +81,7 @@ a { color: inherit; text-decoration: none }
   background:
     radial-gradient(circle at 62% 38%, #bcd6ff 0 8%, transparent 9%),
     radial-gradient(circle at 50% 50%, var(--orbit-accent) 0 38%, transparent 40%),
-    url("/favicon.svg") center/contain no-repeat,
+    url("/Sync-Git-/favicon.svg") center/contain no-repeat,
     linear-gradient(150deg, #181840, #06060a);
   box-shadow: 0 4px 14px -4px color-mix(in srgb, var(--orbit-accent) 60%, transparent);
 }

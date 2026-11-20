@@ -1,12 +1,15 @@
 /* GitHub Orbit Next — service worker (PWA v2.0)
    · Shell offline con red primero: tras cada despliegue la app se refresca sola.
-   · /_next/static/* (assets con hash) → caché primero, inmutables.
+   · BASE se deduce del scope del SW, así que funciona igual en GitHub Pages
+     (usuario.github.io/Sync-Git-/) que en cualquier otro hosting.
+   · BASE + _next/static/* (assets con hash) → caché primero, inmutables.
    · La API de GitHub y todo lo cross-origin NUNCA se intercepta. */
 const CACHE = 'orbit-next-v2.0';
+const BASE = new URL(self.registration.scope).pathname;
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.add('/')).then(() => self.skipWaiting()).catch(() => self.skipWaiting())
+    caches.open(CACHE).then(c => c.add(BASE)).then(() => self.skipWaiting()).catch(() => self.skipWaiting())
   );
 });
 
@@ -24,7 +27,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
   if (url.origin !== location.origin) return;
 
-  if (url.pathname.startsWith('/_next/static/')) {
+  if (url.pathname.startsWith(BASE + '_next/static/')) {
     e.respondWith(
       caches.match(req).then(h => h || fetch(req).then(r => {
         const cp = r.clone(); caches.open(CACHE).then(c => c.put(req, cp)); return r;
@@ -33,11 +36,11 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  if (req.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('index.html')) {
+  if (req.mode === 'navigate' || url.pathname.endsWith('index.html')) {
     e.respondWith(
       fetch(req)
         .then(r => { const cp = r.clone(); caches.open(CACHE).then(c => c.put(url.pathname, cp)); return r; })
-        .catch(() => caches.match(url.pathname).then(h => h || caches.match('/').then(i => i || Response.error())))
+        .catch(() => caches.match(url.pathname).then(h => h || caches.match(BASE).then(i => i || Response.error())))
     );
     return;
   }
