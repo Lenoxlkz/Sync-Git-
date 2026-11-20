@@ -1,4 +1,4 @@
-# Orbit Next v3.0 — Next.js + Liquid Glass
+# Orbit Next v3.1 — Next.js + Liquid Glass
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -35,6 +35,15 @@ háptica y título vivo con la cuota.**
 - **Seguridad Zero Trust**: redacción automática de tokens en pantalla, auditoría de credenciales en Control Center, verificación de integridad SHA-1 al leer blobs.
 - **Rail de actividad** en la barra lateral con las operaciones recientes y **búsqueda global** de repos.
 - **Guía** integrada: conceptos en palabras simples, comandos y notas de seguridad.
+
+
+## Novedades v3.1
+
+- **Modo «Reducir movimiento» = AMOLED**: al activarlo se ocultan y deshabilitan los temas y la sección de acentos, el tema **AMOLED** aparece como única opción y se fuerza el modo oscuro AMOLED (negro puro, sin aurora). Al desactivarlo vuelven los temas y acentos normales y AMOLED desaparece.
+- **Barra de navegación única**: eliminado el menú lateral (redundante); la barra flotante es la única navegación, siempre centrada y **sin desborde horizontal** (580 px en escritorio, ocupa todo el ancho útil en móvil con los 8 iconos).
+- **Tamaños adaptados**: títulos y píldoras de la topbar se recortan con elipsis, filas/botones/fichas encogen antes de desbordar; verificado sin scroll horizontal a 375 px.
+- **Iconos originales del HTML**: favicon y los tres iconos de la PWA (192, 512 y 512-maskable) reconstruidos desde el logo «orbit» original (elipse rotada −18° + satélite); el Service Worker los distribuye con caché v3.1 y el logo original también preside la topbar.
+- **Búsqueda global y actividad**: ahora en hoja desde la topbar y en Control Center, respectivamente (antes vivían en el menú lateral eliminado).
 
 ## Rendimiento
 

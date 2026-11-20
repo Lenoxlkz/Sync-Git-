@@ -19,14 +19,19 @@ export const viewport: Viewport = {
 };
 
 /* Tema antes del primer paint: sin flash. data-theme en <html> gobierna
-   también las variables de Liquid Glass. */
+   también las variables de Liquid Glass. «Reducir movimiento» fuerza AMOLED. */
 const themeScript = `(()=>{try{
   var p=JSON.parse(localStorage.getItem('orbit.prefs')||'{}');
   var t=p.theme||'auto';
   var sys=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
-  document.documentElement.dataset.theme=(t==='auto')?sys:t;
+  if(p.reduceMotion){
+    document.documentElement.dataset.theme='dark';
+    document.documentElement.dataset.amoled='1';
+    document.documentElement.dataset.motion='reduce';
+  }else{
+    document.documentElement.dataset.theme=(t==='auto')?sys:t;
+  }
   if(p.accent)document.documentElement.style.setProperty('--orbit-accent',p.accent);
-  if(p.reduceMotion)document.documentElement.dataset.motion='reduce';
 }catch(e){}})()`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

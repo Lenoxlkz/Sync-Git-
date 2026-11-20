@@ -12,6 +12,7 @@ import { aiChat, aiListModels, AI_PROVIDERS, type AIProvider } from '@/lib/ai';
 import { auditSecrets } from '@/lib/security';
 import { GitHubError } from '@/lib/github';
 import { Section, Row, Diag, ConfirmSheet } from '@/components/bits';
+import { ActivityList } from '@/components/ActivityList';
 import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash, IcList } from '@/components/Icons';
 
 export default function ControlPage() {
@@ -117,24 +118,42 @@ export default function ControlPage() {
         </GlassCard>
       </Section>
 
-      <Section title="Apariencia" sub="Sigue el sistema o fija tu tema — Liquid Glass responde a data-theme">
+      <Section
+        title="Apariencia"
+        sub={p.reduceMotion
+          ? '«Reducir movimiento» activo: tema AMOLED forzado y acentos ocultos'
+          : 'Sigue el sistema o fija tu tema — Liquid Glass responde a data-theme'}
+      >
         <GlassCard padding="18px">
-          <Row label="Tema" sub="Auto sigue a prefers-color-scheme">
-            <GlassSegmented
-              options={[{ label: 'Auto', icon: <IcZap size={13} /> }, { label: 'Claro', icon: <IcSun size={13} /> }, { label: 'Oscuro', icon: <IcMoon size={13} /> }]}
-              value={['auto', 'light', 'dark'].indexOf(p.theme)}
-              onChange={i => setPrefs({ theme: (['auto', 'light', 'dark'] as const)[i] })}
-              aria-label="Tema"
-            />
-          </Row>
-          <Row label="Color de acento" sub="Botones rellenos, enlaces y la aurora">
-            <div className="accent-dots">
-              {ACCENTS.map(c => (
-                <button key={c} className={`accent-dot${c === p.accent ? ' on' : ''}`} style={{ background: c }} aria-label={'Acento ' + c} onClick={() => setPrefs({ accent: c })} />
-              ))}
-            </div>
-          </Row>
-          <Row label="Reducir movimiento" sub="Congela aurora y animaciones">
+          {p.reduceMotion ? (
+            <>
+              <Row label="Tema" sub="Reducir movimiento fuerza el modo oscuro AMOLED (negro puro, sin aurora)">
+                <GlassSegmented options={[{ label: 'AMOLED' }]} value={0} onChange={() => { }} aria-label="Tema AMOLED forzado" />
+              </Row>
+              <Row label="Color de acento" sub="Oculto mientras «Reducir movimiento» está activado">
+                <span className="chip">oculto</span>
+              </Row>
+            </>
+          ) : (
+            <>
+              <Row label="Tema" sub="Auto sigue a prefers-color-scheme">
+                <GlassSegmented
+                  options={[{ label: 'Auto', icon: <IcZap size={13} /> }, { label: 'Claro', icon: <IcSun size={13} /> }, { label: 'Oscuro', icon: <IcMoon size={13} /> }]}
+                  value={['auto', 'light', 'dark'].indexOf(p.theme)}
+                  onChange={i => setPrefs({ theme: (['auto', 'light', 'dark'] as const)[i] })}
+                  aria-label="Tema"
+                />
+              </Row>
+              <Row label="Color de acento" sub="Botones rellenos, enlaces y la aurora">
+                <div className="accent-dots">
+                  {ACCENTS.map(c => (
+                    <button key={c} className={`accent-dot${c === p.accent ? ' on' : ''}`} style={{ background: c }} aria-label={'Acento ' + c} onClick={() => setPrefs({ accent: c })} />
+                  ))}
+                </div>
+              </Row>
+            </>
+          )}
+          <Row label="Reducir movimiento" sub="Congela aurora y animaciones · fuerza AMOLED y oculta temas y acentos">
             <GlassSwitch checked={p.reduceMotion} onChange={v => setPrefs({ reduceMotion: v })} tint="var(--orbit-accent)" aria-label="Reducir movimiento" />
           </Row>
         </GlassCard>
@@ -205,6 +224,12 @@ export default function ControlPage() {
           <Row label="Archivos sensibles al subir" sub="Explorer detecta .env, .pem, id_rsa y similares, los marca y los excluye por defecto">
             <span className="chip ok">activo</span>
           </Row>
+        </GlassCard>
+      </Section>
+
+      <Section title="Actividad reciente" sub="Últimas operaciones realizadas en esta app (solo en este dispositivo)">
+        <GlassCard padding="12px 16px">
+          <ActivityList max={10} />
         </GlassCard>
       </Section>
 

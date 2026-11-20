@@ -132,7 +132,15 @@ function loadPrefs(): Prefs {
 export function applyAppearance(p: Prefs) {
   const html = document.documentElement;
   const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  html.dataset.theme = p.theme === 'auto' ? (sysDark ? 'dark' : 'light') : p.theme;
+  /* «Reducir movimiento» fuerza el modo oscuro AMOLED: negro puro, sin aurora;
+     al desactivarlo se vuelve al tema guardado y AMOLED deja de estar disponible. */
+  if (p.reduceMotion) {
+    html.dataset.theme = 'dark';
+    html.dataset.amoled = '1';
+  } else {
+    html.dataset.theme = p.theme === 'auto' ? (sysDark ? 'dark' : 'light') : p.theme;
+    delete html.dataset.amoled;
+  }
   html.style.setProperty('--orbit-accent', p.accent);
   if (p.reduceMotion) html.dataset.motion = 'reduce';
   else delete html.dataset.motion;
