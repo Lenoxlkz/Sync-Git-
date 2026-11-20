@@ -9,7 +9,8 @@ import { useOrbit, consumeCodeCtx, pushToast, setPrefs } from '@/lib/store';
 import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
 import { detectLang, tokenize, buildTree, saveFileEdit } from '@/lib/code';
 import { logAct } from '@/lib/activity';
-import { Section, NeedConn, Diag, Spinner, RepoPicker } from '@/components/bits';
+import { Section, NeedConn, NeedScope, Diag, Spinner, RepoPicker } from '@/components/bits';
+import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { PatchView } from '@/components/diff';
 import { Md } from '@/lib/md';
 import {
@@ -20,7 +21,8 @@ import {
 interface CodeFile { path: string; size: number; sha: string }
 
 export default function CodePage() {
-  const { connected, repos, prefs } = useOrbit();
+  const { connected, repos, prefs, scopes } = useOrbit();
+  const caps = capsFromScopes(scopes);
   const [repo, setRepo] = useState<string>('');
   const [branch, setBranch] = useState<string>('main');
   const [branches, setBranches] = useState<string[]>([]);
@@ -231,6 +233,11 @@ export default function CodePage() {
   }
 
   if (!connected) return <Section title="Code Explorer"><NeedConn what="explorar el código de tus repositorios" /></Section>;
+  if (!caps.map.code) return (
+    <Section title="Code Explorer">
+      <NeedScope title="Permiso «Contents» requerido" reason={CAPS.find(c => c.cap === 'code')!.missingNote} />
+    </Section>
+  );
 
   /* ---------- picker de repositorio ---------- */
   if (!repo) {

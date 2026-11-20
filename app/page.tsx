@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { GlassButton, GlassInput } from '@zakisheriff/liquid-glass';
 import { useOrbit, pushToast, setPrefs, loadRepos, openFicha, openCode, requestCreatePR, setChatPrefill } from '@/lib/store';
-import { aiChat, type ChatMsg } from '@/lib/ai';
+import { aiChat, provOf, type AIProvider, type ChatMsg } from '@/lib/ai';
 import { gh, createBranch, GitHubError, type GHRepo } from '@/lib/github';
 import { logAct } from '@/lib/activity';
 import { Md } from '@/lib/md';
@@ -255,7 +255,7 @@ export default function ChatPage() {
   }
 
   function labelProv(p: string): string {
-    return p === 'openai' ? 'OpenAI' : p === 'glm' ? 'GLM · Z.ai' : 'Gemini';
+    return provOf(p as AIProvider).label;
   }
 
   /* ---------- IA con contexto + comandos ejecutables ---------- */
@@ -268,9 +268,14 @@ export default function ChatPage() {
     ctx.push('Comandos exactos que la app puede ejecutar sin IA: muéstrame mis repositorios | últimos commits | abre los issues pendientes | pull requests | crea una rama llamada <nombre> | compara <ramaA> con <ramaB> | prepara un pull request | busca archivos que contengan <texto> | sube esta carpeta al repositorio | crea un repositorio llamado <nombre> | estado de la conexión | modo oscuro | modo claro | limpia el chat | guía.');
     ctx.push('Responde SIEMPRE en español, breve y claro (máximo ~150 palabras), con markdown ligero. Si el usuario quiere ejecutar una operación cubierta por un comando, responde brevemente y añade AL FINAL una línea con el bloque ```orbit {"command":"<comando exacto>"}``` para que la app lo ejecute. Si quiere navegar a una sección usa ```orbit {"navigate":"repos"}``` con una de: repos, prs, issues, explorer, code, control, guide. No inventes datos de la cuenta: si no lo sabes, indica qué comando lo consulta.');
     const hist: ChatMsg[] = msgsRef.current.slice(-8).map((m): ChatMsg => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text.replace(/[#*`]/g, '') })).filter(m => m.content);
-    const text = await aiChat(prefs.aiProvider, prefs.aiKey, prefs.aiModel || 'gpt-4o-mini', [
-      { role: 'system', content: ctx.join(' ') }, ...hist, { role: 'user', content: raw },
-    ]);
+    const text = await aiChat(
+      prefs.aiProvider, prefs.aiKey,
+      prefs.aiModel || provOf(prefs.aiProvider).model || 'gpt-4o-mini',
+      [
+        { role: 'system', content: ctx.join(' ') }, ...hist, { role: 'user', content: raw },
+      ],
+      { baseUrl: prefs.aiBaseUrl, gatewayKey: prefs.aiGatewayKey },
+    );
     const cmds: Array<{ type: 'command' | 'nav'; v: string }> = [];
     const re = /```orbit\s*([\s\S]*?)```/g;
     let mm: RegExpExecArray | null;

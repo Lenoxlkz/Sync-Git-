@@ -8,13 +8,15 @@ import { GlassButton, GlassInput, GlassSegmented, GlassSheet } from '@zakisherif
 import { useOrbit, pushToast, consumeCreatePR } from '@/lib/store';
 import { gh, GitHubError, type GHPull, type GHCompare } from '@/lib/github';
 import { logAct } from '@/lib/activity';
-import { Section, NeedConn, Diag, Spinner, ConfirmSheet, RepoPicker, BranchPicker, relTime } from '@/components/bits';
+import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, RepoPicker, BranchPicker, relTime } from '@/components/bits';
+import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { PatchView } from '@/components/diff';
 import { Md } from '@/lib/md';
 import { IcPlus, IcExternal, IcMerge, IcX, IcPR, IcCheck, IcAlert, IcBranch } from '@/components/Icons';
 
 export default function PullsPage() {
-  const { connected } = useOrbit();
+  const { connected, scopes } = useOrbit();
+  const caps = capsFromScopes(scopes);
   const [repoFilter, setRepoFilter] = useState<string>('');
   const [stateF, setStateF] = useState(0); // abiertos · fusionados · cerrados · todos
   const [pulls, setPulls] = useState<GHPull[]>([]);
@@ -90,6 +92,11 @@ export default function PullsPage() {
   }
 
   if (!connected) return <Section title="Pull Requests"><NeedConn what="ver pull requests" /></Section>;
+  if (!caps.map.pulls) return (
+    <Section title="Pull Requests">
+      <NeedScope title="Scope «repo» o «public_repo» requerido" reason={CAPS.find(c => c.cap === 'pulls')!.missingNote} />
+    </Section>
+  );
 
   const shown = repoFilter ? pulls.filter(p => p.base.repo.full_name === repoFilter) : pulls;
   const counts = {

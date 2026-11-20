@@ -8,7 +8,8 @@ import { GlassButton, GlassInput, GlassSwitch, GlassCard, GlassSegmented, GlassS
 import { useOrbit, loadRepos, pushToast, openFicha, closeFicha, setPrefs } from '@/lib/store';
 import { gh, GitHubError } from '@/lib/github';
 import { logAct } from '@/lib/activity';
-import { Section, NeedConn, Diag, Spinner, ConfirmSheet, ContextMenu, langColor, relTime, fmtSize, type CtxItem } from '@/components/bits';
+import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, ContextMenu, langColor, relTime, fmtSize, type CtxItem } from '@/components/bits';
+import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { RepoFicha } from '@/components/RepoFicha';
 import { IcPlus, IcLock, IcGlobe, IcTrash, IcBranch, IcIssue, IcStar, IcBox, IcCommit, IcCode, IcUpload, IcFork, IcMore } from '@/components/Icons';
 
@@ -16,7 +17,8 @@ type Sort = 'updated' | 'name' | 'stars';
 type Layout = 'grid' | 'list';
 
 export default function ReposPage() {
-  const { connected, repos, fichaRepo } = useOrbit();
+  const { connected, repos, fichaRepo, scopes } = useOrbit();
+  const caps = capsFromScopes(scopes);
   const router = useRouter();
   const [q, setQ] = useState('');
   const [lang, setLang] = useState('all');
@@ -103,6 +105,11 @@ export default function ReposPage() {
       <Section title="Repositories"><NeedConn what="ver tus repositorios" /></Section>
       <RepoFicha open={false} onClose={closeFicha} />
     </>
+  );
+  if (connected && !caps.map.repos) return (
+    <Section title="Repositories">
+      <NeedScope title="Scope «repo» o «public_repo» requerido" reason={CAPS.find(c => c.cap === 'repos')!.missingNote} />
+    </Section>
   );
 
   return (

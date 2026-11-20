@@ -1,4 +1,4 @@
-# Orbit Next v3.1 — Next.js + Liquid Glass
+# Orbit Next v3.2 — Next.js + Liquid Glass
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -44,6 +44,14 @@ háptica y título vivo con la cuota.**
 - **Tamaños adaptados**: títulos y píldoras de la topbar se recortan con elipsis, filas/botones/fichas encogen antes de desbordar; verificado sin scroll horizontal a 375 px.
 - **Iconos originales del HTML**: favicon y los tres iconos de la PWA (192, 512 y 512-maskable) reconstruidos desde el logo «orbit» original (elipse rotada −18° + satélite); el Service Worker los distribuye con caché v3.1 y el logo original también preside la topbar.
 - **Búsqueda global y actividad**: ahora en hoja desde la topbar y en Control Center, respectivamente (antes vivían en el menú lateral eliminado).
+
+
+## Novedades v3.2
+
+- **Barra de navegación Liquid Glass propia**: la «gota» líquida ahora es CSS puro (variables `--lnav-i`/`--lnav-n`) y se desliza con acento bajo **cualquiera de los 8 iconos** — antes, a partir del 4º, la lente del componente de terceros se desalineaba y no mostraba el acento del icono activo.
+- **IA multi-proveedor**: selector en modal con **11 proveedores** (OpenAI, Claude · Anthropic, DeepSeek, Grok · xAI, GLM · Z.ai, Gemini, Mistral, OpenRouter, Groq, Ollama local y endpoint personalizado); campo de **API Key con ojo mostrar/ocultar** mientras se escribe; **URL Base opcional** y **clave adicional** para gateways/proxies cuando se usa URL personalizada. Reglas de seguridad: la clave guardada **nunca se vuelve a mostrar** (el campo siempre nace vacío; solo se reemplaza).
+- **Scopes reales del token → funciones**: la app lee `X-OAuth-Scopes`, mapea cada scope a funciones en lenguaje natural (tarjeta «Scopes y funciones de tu token» en Control Center), **oculta del menú las secciones que el token no permite** y muestra en cada página un aviso explicando qué scope falta y por qué. Los tokens fine-grained (sin cabecera de scopes) se detectan y se habilitan con nota informativa.
+- El compositor del chat ya no queda tapado por la barra flotante.
 
 ## Rendimiento
 

@@ -63,6 +63,17 @@ export function NeedConn({ what }: { what: string }) {
   );
 }
 
+/* El token está conectado pero no tiene el scope que habilita esta función. */
+export function NeedScope({ title, reason }: { title: string; reason: string }) {
+  return (
+    <Empty
+      ico={<IcShield size={30} />}
+      text={`${title} — ${reason} Revisa los scopes de tu token en Control Center (sección «Scopes y funciones»).`}
+      action={<Link href="/control/"><GlassButton variant="filled" tint="var(--orbit-accent)">Ver scopes del token</GlassButton></Link>}
+    />
+  );
+}
+
 /* Selector de repositorio: sheet con búsqueda sobre tus repos */
 export function RepoPicker({ open, onClose, onPick }: { open: boolean; onClose: () => void; onPick: (full: string) => void }) {
   const { repos } = useOrbit();

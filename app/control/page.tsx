@@ -8,7 +8,8 @@ import { GlassButton, GlassInput, GlassSwitch, GlassSegmented, GlassCard, GlassS
 import { useSyncExternalStore } from 'react';
 import { useOrbit, connect, disconnect, pushToast, setPrefs, destroyVault, openVaultSheet, wipeAll, ACCENTS } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
-import { aiChat, aiListModels, AI_PROVIDERS, type AIProvider } from '@/lib/ai';
+import { aiChat, aiListModels, AI_PROVIDERS, provOf } from '@/lib/ai';
+import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { auditSecrets } from '@/lib/security';
 import { GitHubError } from '@/lib/github';
 import { Section, Row, Diag, ConfirmSheet } from '@/components/bits';
@@ -27,6 +28,7 @@ export default function ControlPage() {
   const [modelsOpen, setModelsOpen] = useState(false);
   const [modelsBusy, setModelsBusy] = useState(false);
   const [audit, setAudit] = useState(-1);
+  const [provOpen, setProvOpen] = useState(false);
 
   useEffect(() => { setAudit(auditSecrets()); }, []);
 
@@ -47,9 +49,9 @@ export default function ControlPage() {
   async function testAI() {
     setBusy(true);
     try {
-      const r = await aiChat(state.prefs.aiProvider, state.prefs.aiKey, state.prefs.aiModel || AI_PROVIDERS.find(p => p.id === state.prefs.aiProvider)!.model, [
+      const r = await aiChat(state.prefs.aiProvider, state.prefs.aiKey, state.prefs.aiModel || provOf(state.prefs.aiProvider).model, [
         { role: 'user', content: 'Di «Orbit IA lista» y nada más.' },
-      ]);
+      ], { baseUrl: state.prefs.aiBaseUrl, gatewayKey: state.prefs.aiGatewayKey });
       pushToast('IA conectada', 'ok', r.slice(0, 60));
     } catch (e) {
       pushToast('IA no responde', 'err', e instanceof Error ? e.message : '');
@@ -57,10 +59,10 @@ export default function ControlPage() {
   }
 
   async function loadModels() {
-    if (!state.prefs.aiKey) { pushToast('Pon la clave primero', 'err'); return; }
+    if (!state.prefs.aiKey && provOf(state.prefs.aiProvider).needsKey) { pushToast('Pon la clave primero', 'err'); return; }
     setModelsBusy(true); setModelsOpen(true);
     try {
-      const list = await aiListModels(state.prefs.aiProvider, state.prefs.aiKey);
+      const list = await aiListModels(state.prefs.aiProvider, state.prefs.aiKey, { baseUrl: state.prefs.aiBaseUrl, gatewayKey: state.prefs.aiGatewayKey });
       setModels(list);
       pushToast('Modelos disponibles', 'ok', list.length + ' modelos accesibles con tu clave');
     } catch (e) {
@@ -70,7 +72,8 @@ export default function ControlPage() {
   }
 
   const p = state.prefs;
-  const provIdx = AI_PROVIDERS.findIndex(x => x.id === p.aiProvider);
+  const prov = provOf(p.aiProvider);
+  const caps = capsFromScopes(state.scopes);
 
   return (
     <>
@@ -113,6 +116,59 @@ export default function ControlPage() {
                 <GlassCard padding="12px 16px" className="stat-box"><small>Repos visibles</small><b>{state.repos.length}</b></GlassCard>
               </div>
               <GlassButton destructive onClick={disconnect}>Desconectar</GlassButton>
+            </>
+          )}
+        </GlassCard>
+      </Section>
+
+      <Section
+        title="Scopes y funciones de tu token"
+        sub={state.connected
+          ? (caps.fineGrained
+            ? 'Token fine-grained o sin scopes declarados — GitHub no informa los permisos; se descubren al usar cada función'
+            : 'GitHub declara estos scopes en cada respuesta autenticada — cada uno habilita funciones equivalentes aquí')
+          : 'Conecta tu cuenta: al verificar el token, GitHub informa sus scopes y aquí se listan las funciones que habilita'}
+        right={state.connected && caps.raw.length ? (
+          <div className="chips">
+            {caps.raw.slice(0, 8).map(s => <span key={s} className="chip acc mono">{s}</span>)}
+            {caps.raw.length > 8 ? <span className="chip">+{caps.raw.length - 8} más</span> : null}
+          </div>
+        ) : null}
+      >
+        <GlassCard padding="18px">
+          {!state.connected ? (
+            <p className="tiny" style={{ padding: '6px 4px' }}>
+              Sin conexión no hay scopes que mostrar. Verifica tu Personal Access Token arriba y esta tarjeta
+              se llenará con el mapeo scope → función en lenguaje natural.
+            </p>
+          ) : (
+            <>
+              {caps.fineGrained ? (
+                <div className="note warn" style={{ marginBottom: 12 }}>
+                  Los tokens fine-grained no exponen sus permisos en cabeceras. Orbit habilita lo esencial
+                  (repos, código, PRs, issues) y descubre los permisos reales al usar cada función; si algo
+                  responde 403, ese permiso falta en el token.
+                </div>
+              ) : null}
+              {CAPS.map(ci => (
+                <Row
+                  key={ci.cap}
+                  label={ci.title}
+                  sub={
+                    ci.plain + ' · scope: ' + ci.scopes +
+                    ' · habilita: ' + ci.features.join(', ') +
+                    (caps.map[ci.cap] ? '' : ' — ' + ci.missingNote)
+                  }
+                >
+                  <span className={`chip ${caps.map[ci.cap] ? 'ok' : 'err'}`}>
+                    {caps.map[ci.cap] ? 'disponible ✓' : 'no disponible'}
+                  </span>
+                </Row>
+              ))}
+              <p className="tiny" style={{ marginTop: 10 }}>
+                Las secciones del menú aparecen u ocultan en tiempo real según estos scopes: si tu token
+                no permite una función, esa sección no se muestra y aquí se explica por qué.
+              </p>
             </>
           )}
         </GlassCard>
@@ -183,33 +239,61 @@ export default function ControlPage() {
         </GlassCard>
       </Section>
 
-      <Section title="Inteligencia artificial" sub="La clave vive en tu navegador y viaja solo al proveedor">
+      <Section title="Inteligencia artificial" sub="Una opción debajo de la otra: proveedor → clave → URL base → modelo. Las claves viajan solo al proveedor elegido">
         <GlassCard padding="18px">
-          <Row label="Proveedor">
-            <GlassSegmented
-              options={AI_PROVIDERS.map(x => ({ label: x.label }))}
-              value={provIdx < 0 ? 0 : provIdx}
-              onChange={i => {
-                const id = AI_PROVIDERS[i].id as AIProvider;
-                setPrefs({ aiProvider: id, aiModel: AI_PROVIDERS[i].model });
-              }}
-              aria-label="Proveedor de IA"
+          <Row label="Proveedor de preferencia" sub={prov.note || 'Toca para elegir el servicio con el que quiere hablar Orbit'}>
+            <GlassButton icon={<IcList size={14} />} onClick={() => setProvOpen(true)}>
+              {prov.label}
+            </GlassButton>
+          </Row>
+          <Row label="API Key del proveedor" sub="Mientras escribes puedes mostrarla u ocultarla con el ojo; una vez guardada nunca se vuelve a mostrar — solo se reemplaza escribiendo una nueva">
+            <KeyField
+              saved={!!p.aiKey}
+              placeholder={prov.keyHint}
+              onCommit={v => { setPrefs({ aiKey: v }); pushToast('Clave guardada', 'ok', 'No se volverá a mostrar; escribe una nueva para reemplazarla'); }}
             />
           </Row>
-          <Row label="Clave de API" sub="OpenAI · GLM (Z.ai) · Gemini — se guarda en localStorage de este dispositivo">
-            <GlassInput type="password" placeholder="sk-… / clave del proveedor" value={p.aiKey} onChange={e => setPrefs({ aiKey: e.target.value })} aria-label="Clave de IA" tint="var(--orbit-accent)" />
+          <Row label="URL Base (opcional · personalizada)" sub={'Déjalo vacío para usar la oficial: ' + (prov.baseUrl || '—')}>
+            <GlassInput placeholder={prov.baseUrl || 'https://tu-endpoint/v1'} value={p.aiBaseUrl} onChange={e => setPrefs({ aiBaseUrl: e.target.value })} aria-label="URL Base personalizada" className="mono" />
           </Row>
-          <Row label="Modelo" sub={'Por defecto: ' + AI_PROVIDERS[provIdx < 0 ? 0 : provIdx].model}>
-            <GlassInput placeholder={AI_PROVIDERS[provIdx < 0 ? 0 : provIdx].model} value={p.aiModel} onChange={e => setPrefs({ aiModel: e.target.value })} aria-label="Modelo" />
+          {p.aiBaseUrl.trim() ? (
+            <Row label="API Key adicional · URL personalizada" sub="Si tu endpoint o proxy usa su propia clave, escríbela aquí: se enviará como Authorization en lugar de la clave del proveedor">
+              <KeyField
+                saved={!!p.aiGatewayKey}
+                placeholder="clave del gateway / proxy"
+                onCommit={v => { setPrefs({ aiGatewayKey: v }); pushToast('Clave adicional guardada', 'ok', 'No se volverá a mostrar'); }}
+              />
+            </Row>
+          ) : null}
+          <Row label="Modelo" sub={'Por defecto: ' + (prov.model || 'define el nombre exacto del modelo de tu endpoint')}>
+            <GlassInput placeholder={prov.model || 'nombre-del-modelo'} value={p.aiModel} onChange={e => setPrefs({ aiModel: e.target.value })} aria-label="Modelo" />
           </Row>
           <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <GlassButton disabled={busy || !p.aiKey} onClick={testAI}>Probar conexión</GlassButton>
-            <GlassButton icon={<IcList size={14} />} disabled={modelsBusy || !p.aiKey} onClick={loadModels}>
+            <GlassButton disabled={busy || (!p.aiKey && prov.needsKey)} onClick={testAI}>Probar conexión</GlassButton>
+            <GlassButton icon={<IcList size={14} />} disabled={modelsBusy || (!p.aiKey && prov.needsKey)} onClick={loadModels}>
               {modelsBusy ? 'Listando…' : 'Ver modelos disponibles'}
             </GlassButton>
           </div>
+          <p className="tiny" style={{ marginTop: 10 }}>
+            Seguridad: las claves se guardan en este dispositivo, nunca se muestran tras guardarse y viajan por HTTPS directamente al proveedor — Orbit no tiene servidor intermediario.
+          </p>
         </GlassCard>
       </Section>
+
+      {/* Modal: selector de proveedor */}
+      <GlassSheet open={provOpen} onClose={() => setProvOpen(false)} detents={['medium', 'large']} aria-label="Elegir proveedor de IA">
+        <div className="sheet-head"><h3>Proveedor de IA</h3></div>
+        <p className="sheet-text">Elige el servicio; después pegas su clave en el paso siguiente. Cada proveedor trae su modelo por defecto (editable).</p>
+        <div className="picker-list">
+          {AI_PROVIDERS.map(x => (
+            <button key={x.id} className={`picker-item${x.id === p.aiProvider ? ' sel' : ''}`}
+              onClick={() => { setPrefs({ aiProvider: x.id, aiModel: x.model }); setProvOpen(false); pushToast('Proveedor: ' + x.label, 'ok', x.model ? 'modelo por defecto: ' + x.model : 'define URL Base y modelo'); }}>
+              <b>{x.label}{x.id === p.aiProvider ? ' ✓' : ''}</b>
+              <small>{x.model ? 'modelo: ' + x.model : 'sin modelo por defecto'}{x.note ? ' · ' + x.note : ''}</small>
+            </button>
+          ))}
+        </div>
+      </GlassSheet>
 
       <Section title="Seguridad · Zero Trust" sub="Redacción de secretos, auditoría del código cargado y datos solo locales">
         <GlassCard padding="18px">
@@ -279,5 +363,56 @@ export default function ControlPage() {
         </div>
       </GlassSheet>
     </>
+  );
+}
+
+/* Ojo de mostrar/ocultar (solo afecta al texto que se está escribiendo) */
+function EyeIcon({ off }: { off?: boolean }) {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"
+      strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="2.8" />
+      {off ? <path d="M4 4l16 16" /> : null}
+    </svg>
+  );
+}
+
+/** Campo de clave con reglas de seguridad:
+    · mientras se escribe → botón de ojo para mostrar/ocultar el borrador;
+    · al confirmar (enter o salir del campo) se guarda y el campo se vacía;
+    · la clave guardada jamás se renderiza — el campo siempre empieza vacío
+      y solo admite reemplazarla escribiendo una nueva. */
+function KeyField({ saved, placeholder, onCommit }: {
+  saved: boolean; placeholder: string; onCommit: (v: string) => void;
+}) {
+  const [draft, setDraft] = useState('');
+  const [show, setShow] = useState(false);
+  const commit = () => {
+    const v = draft.trim();
+    if (v) { onCommit(v); setDraft(''); setShow(false); }
+  };
+  return (
+    <div className="keyfield">
+      <GlassInput
+        type={show ? 'text' : 'password'}
+        placeholder={saved ? '•••••• guardada — escribe una nueva para reemplazarla' : placeholder}
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); }}
+        aria-label={saved ? 'Reemplazar clave guardada' : 'Nueva clave de API'}
+        tint="var(--orbit-accent)"
+      />
+      <button
+        type="button" className="ibtn" style={{ opacity: draft ? 1 : .4 }}
+        aria-label={show ? 'Ocultar clave' : 'Mostrar clave'}
+        disabled={!draft}
+        onClick={() => setShow(s => !s)}
+      >
+        <EyeIcon off={!show} />
+      </button>
+      <span className={`chip ${saved ? 'ok' : ''}`}>{saved ? 'guardada ✓' : 'sin clave'}</span>
+    </div>
   );
 }

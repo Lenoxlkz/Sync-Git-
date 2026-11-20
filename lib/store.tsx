@@ -22,6 +22,8 @@ export interface Prefs {
   aiProvider: AIProvider;
   aiKey: string;
   aiModel: string;
+  aiBaseUrl: string;
+  aiGatewayKey: string;
   remember: boolean;
   rememberDevice: boolean;
   lastRepo: string;
@@ -33,7 +35,7 @@ export const ACCENTS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '
 const DEFAULT_PREFS: Prefs = {
   theme: 'auto', accent: '#0a84ff', reduceMotion: false,
   netkeep: true, netkeepKbps: 40,
-  aiProvider: 'openai', aiKey: '', aiModel: '',
+  aiProvider: 'openai', aiKey: '', aiModel: '', aiBaseUrl: '', aiGatewayKey: '',
   remember: false, rememberDevice: false, lastRepo: '', lastBranch: '',
 };
 

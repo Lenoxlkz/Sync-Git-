@@ -1,13 +1,16 @@
 'use client';
 
 /* AppShell: chrome de Orbit Next — topbar con logo original + búsqueda,
-   barra de navegación única (siempre visible, sin desborde), toasts y bóveda. */
+   barra de navegación Liquid Glass propia (gota deslizante, sin desborde),
+   navegación filtrada por los scopes del token, toasts y bóveda. */
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { GlassNav, GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
+import { GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
 import { useOrbit, boot, applyAppearance, unlockVault, createVault, pushToast, openFicha } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
+import { capsFromScopes, type Cap } from '@/lib/scopes';
+import { LiquidNavBar } from './LiquidNavBar';
 import { ToastStack } from './Toast';
 import { Diag } from './bits';
 import { IcSearch, IcDownload, IcKey, IcUser, IcFolder, IcShield, IcLock, IcX } from './Icons';
@@ -28,15 +31,16 @@ export function OrbitLogo({ size = 26 }: { size?: number }) {
   );
 }
 
-const NAV = [
-  { href: '/', label: 'Chat' },
-  { href: '/repos/', label: 'Repos' },
-  { href: '/pulls/', label: 'PRs' },
-  { href: '/issues/', label: 'Issues' },
-  { href: '/explorer/', label: 'Subir' },
-  { href: '/code/', label: 'Código' },
-  { href: '/control/', label: 'Control' },
-  { href: '/guide/', label: 'Guía' },
+/* cap: scope que habilita la sección (null = siempre visible) */
+const NAV: Array<{ href: string; label: string; cap: Cap | null }> = [
+  { href: '/', label: 'Chat', cap: null },
+  { href: '/repos/', label: 'Repos', cap: 'repos' },
+  { href: '/pulls/', label: 'PRs', cap: 'pulls' },
+  { href: '/issues/', label: 'Issues', cap: 'issues' },
+  { href: '/explorer/', label: 'Subir', cap: 'upload' },
+  { href: '/code/', label: 'Código', cap: 'code' },
+  { href: '/control/', label: 'Control', cap: null },
+  { href: '/guide/', label: 'Guía', cap: null },
 ];
 
 const NAV_ICONS: Record<string, React.ReactNode> = {
@@ -91,8 +95,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return state.repos.filter(r => r.name.toLowerCase().includes(q) || r.full_name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q)).slice(0, 8);
   }, [gs, state.repos]);
 
-  const activeIndex = NAV.findIndex(n => n.href === '/' ? pathname === '/' : pathname.startsWith(n.href));
-  const current = NAV[activeIndex] ?? NAV[0];
+  /* capacidades según los scopes reales del token: filtra la navegación */
+  const caps = useMemo(
+    () => (state.connected ? capsFromScopes(state.scopes) : null),
+    [state.connected, state.scopes],
+  );
+  const visibleNav = useMemo(() => NAV.filter(n => !n.cap || !caps || caps.map[n.cap]), [caps]);
+  const activeIndex = visibleNav.findIndex(n => n.href === '/' ? pathname === '/' : pathname.startsWith(n.href));
+  const current = visibleNav[activeIndex] ?? visibleNav[0] ?? NAV[0];
 
   return (
     <div className="app-frame">
@@ -102,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <OrbitLogo size={26} />
             <span>
               <b>GitHub Orbit</b>
-              <small>Centro de mando · v3.1</small>
+              <small>Centro de mando · v3.2</small>
             </span>
           </Link>
           <div className="tb-title"><h1>{current.label}</h1></div>
@@ -124,14 +134,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="view">{children}</main>
       </div>
 
-      {/* barra de navegación única */}
+      {/* barra de navegación Liquid Glass: gota deslizante con acento, igual en todos los iconos */}
       <div className="bottom-nav">
-        <GlassNav
-          items={NAV.map(n => ({ label: n.label, icon: NAV_ICONS[n.label] }))}
+        <LiquidNavBar
+          items={visibleNav.map(n => ({ label: n.label, icon: NAV_ICONS[n.label] }))}
           activeIndex={activeIndex < 0 ? 0 : activeIndex}
-          onChange={i => router.push(NAV[i].href)}
-          showLabels={false}
-          aria-label="Secciones"
+          onChange={i => router.push(visibleNav[i].href)}
+          ariaLabel="Secciones"
         />
       </div>
 

@@ -7,14 +7,16 @@ import { GlassButton, GlassInput, GlassSegmented, GlassSheet } from '@zakisherif
 import { useOrbit, pushToast } from '@/lib/store';
 import { gh, GitHubError, type GHIssue, type GHComment } from '@/lib/github';
 import { logAct } from '@/lib/activity';
-import { Section, NeedConn, Diag, Spinner, ConfirmSheet, RepoPicker, relTime } from '@/components/bits';
+import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, RepoPicker, relTime } from '@/components/bits';
+import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { Md } from '@/lib/md';
 import { IcPlus, IcExternal, IcIssue, IcEdit, IcRotate, IcX } from '@/components/Icons';
 
 interface IssueFull extends GHIssue { repoFullName: string; labels: string[]; assignee: string | null }
 
 export default function IssuesPage() {
-  const { connected, prefs } = useOrbit();
+  const { connected, prefs, scopes } = useOrbit();
+  const caps = capsFromScopes(scopes);
   const [stateF, setStateF] = useState(0); // abiertos · cerrados · todos
   const [labelF, setLabelF] = useState('all');
   const [issues, setIssues] = useState<IssueFull[]>([]);
@@ -61,6 +63,11 @@ export default function IssuesPage() {
   }
 
   if (!connected) return <Section title="Issues"><NeedConn what="ver issues" /></Section>;
+  if (!caps.map.issues) return (
+    <Section title="Issues">
+      <NeedScope title="Scope «repo» o «public_repo» requerido" reason={CAPS.find(c => c.cap === 'issues')!.missingNote} />
+    </Section>
+  );
 
   const openCount = issues.filter(i => i.state === 'open').length;
   const closedCount = issues.filter(i => i.state === 'closed').length;

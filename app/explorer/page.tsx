@@ -12,12 +12,14 @@ import { analyze, commitOrbit, type FileEntry, type Plan, type CommitResult } fr
 import { lineDiff, type DiffResult } from '@/lib/code';
 import { isSecretPath, isBinPath, normPath } from '@/lib/security';
 import { readZip } from '@/lib/zip';
-import { Section, NeedConn, Diag, Spinner, RepoPicker, BranchPicker } from '@/components/bits';
+import { Section, NeedConn, NeedScope, Diag, Spinner, RepoPicker, BranchPicker } from '@/components/bits';
+import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { SideBySide } from '@/components/diff';
 import { IcUpload, IcFolder, IcFile, IcRefresh, IcCloud, IcCheck, IcWarn, IcExternal, IcTrash, IcCompare } from '@/components/Icons';
 
 export default function ExplorerPage() {
-  const { connected, repos, prefs } = useOrbit();
+  const { connected, repos, prefs, scopes } = useOrbit();
+  const caps = capsFromScopes(scopes);
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [repo, setRepo] = useState('');
   const [branch, setBranch] = useState('');
@@ -153,6 +155,11 @@ export default function ExplorerPage() {
   }
 
   if (!connected) return <Section title="Explorer"><NeedConn what="subir archivos a un repositorio" /></Section>;
+  if (!caps.map.upload) return (
+    <Section title="Explorer">
+      <NeedScope title="Permiso «Contents» de escritura requerido" reason={CAPS.find(c => c.cap === 'upload')!.missingNote} />
+    </Section>
+  );
 
   const total = plan ? plan.creates.length + plan.updates.length : 0;
   const rows = plan ? [...plan.creates.map(e => ({ e, kind: 'nuevo' })), ...plan.updates.map(e => ({ e, kind: 'cambiado' })), ...plan.skips.slice(0, 60).map(e => ({ e, kind: 'igual' }))] : [];
