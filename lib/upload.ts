@@ -7,9 +7,9 @@
 
 import { gh, blobSha, fileToB64, GitHubError, type GHTreeEntry } from './github';
 
-export interface FileEntry { path: string; file: File }
+export interface FileEntry { path: string; file: File; secret?: boolean }
 export interface Plan {
-  creates: FileEntry[]; updates: FileEntry[]; skips: FileEntry[];
+  creates: FileEntry[]; updates: Array<FileEntry & { remoteSha?: string }>; skips: FileEntry[];
   deletes: string[]; dups: string[]; tooBig: FileEntry[];
 }
 
@@ -49,7 +49,7 @@ export async function analyze(
       const rs = remote.get(e.path);
       if (rs === sha) plan.skips.push(e);
       else if (rs === undefined) plan.creates.push(e);
-      else plan.updates.push(e);
+      else plan.updates.push({ ...e, remoteSha: rs });
     }
   }
 

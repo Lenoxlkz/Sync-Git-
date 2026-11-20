@@ -1,8 +1,9 @@
 # GitHub Orbit — Next.js + Liquid Glass
 
-Centro de mando personal de GitHub: chat con comandos e IA, repos, pull
-requests, issues, **subida delta por SHA-1 con verificación ruta por ruta**,
-sincronización espejo, bóveda cifrada AES-256-GCM y NetKeep. Construido con
+Centro de mando personal de GitHub: chat en lenguaje natural con IA que ejecuta
+comandos, repos con ficha y releases, PRs con diff y revisión, issues, Code
+Explorer con editor y comparador de ramas, **subida delta por SHA-1 verificada
+ruta por ruta**, bóveda cifrada AES-256-GCM y NetKeep. Construido con
 **Next.js 15 (App Router, TypeScript)** y **@zakisheriff/liquid-glass v4**
 (refracción real estilo iOS 26). El token y las claves viven solo en tu
 navegador; el servidor no guarda nada.
@@ -10,12 +11,12 @@ navegador; el servidor no guarda nada.
 ## Estructura
 
 ```
-app/                      páginas (Chat, Repos, PRs, Issues, Explorer, Control Center)
-components/               AppShell, iconos, toasts y piezas glass reutilizables
-lib/                      GitHub API, upload delta, bóveda AES, IA, ZIP, NetKeep, store
-public/                   PWA: manifest, service worker, iconos, .nojekyll
-.github/workflows/        deploy.yml — build y despliegue automático a GitHub Pages
-next.config.ts            export estático + basePath /Sync-Git- (GitHub Pages)
+app/            8 vistas: Chat · Repos · PRs · Issues · Explorer · Code · Control · Guía
+components/     AppShell, ficha de repo, releases, tarjetas de chat, diff, toasts
+lib/            GitHub API, upload delta, código (diff/highlight), IA, bóveda, NetKeep
+public/         PWA: manifest, service worker, iconos, .nojekyll
+.github/        workflow de despliegue automático a GitHub Pages
+next.config.ts  export estático + basePath /Sync-Git- (GitHub Pages)
 ```
 
 ## Despliegue en GitHub Pages (automático)

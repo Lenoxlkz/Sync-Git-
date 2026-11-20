@@ -68,3 +68,29 @@ export const ORBIT_SYSTEM =
   'Eres Orbit, la asistente personal de un centro de mando de GitHub. ' +
   'Respondes en español, breve y práctica. Ayudas con repos, commits, PRs, issues y Git en general. ' +
   'No inventas datos de repositorios: si el usuario pregunta por sus datos concretos, sugiérele los comandos de Orbit (escribe «ayuda»).';
+
+/** Lista los modelos que la clave tiene disponibles en el proveedor. */
+export async function aiListModels(provider: AIProvider, key: string): Promise<Array<{ id: string; name: string }>> {
+  const fail = (status: number) => {
+    if (status === 401 || status === 403) throw new Error('Clave rechazada (' + status + '): revisa la API key.');
+    throw new Error('El proveedor respondió ' + status + ' al listar modelos.');
+  };
+  if (provider === 'gemini') {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + encodeURIComponent(key));
+    if (!res.ok) fail(res.status);
+    const j = (await res.json()) as { models?: Array<{ name?: string; displayName?: string; supportedGenerationMethods?: string[] }> };
+    return (j.models || [])
+      .filter(m => (m.supportedGenerationMethods || []).includes('generateContent'))
+      .map(m => ({ id: (m.name || '').replace(/^models\//, ''), name: m.displayName || m.name || '' }));
+  }
+  const url = provider === 'glm'
+    ? 'https://api.z.ai/api/paas/v4/models'
+    : 'https://api.openai.com/v1/models';
+  const res = await fetch(url, { headers: { Authorization: 'Bearer ' + key } });
+  if (!res.ok) fail(res.status);
+  const j = (await res.json()) as { data?: Array<{ id?: string; name?: string; display_name?: string }>; models?: Array<{ id?: string; name?: string; display_name?: string }> };
+  const arr = j.data || j.models || [];
+  return arr
+    .map(m => ({ id: m.id || m.name || '', name: m.display_name || m.name || m.id || '' }))
+    .filter(m => m.id);
+}

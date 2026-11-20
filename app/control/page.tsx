@@ -3,15 +3,16 @@
 /* Control Center: conexión con PAT (con diagnóstico real), bóveda,
    apariencia, NetKeep, IA y zona de peligro. */
 
-import { useState } from 'react';
-import { GlassButton, GlassInput, GlassSwitch, GlassSegmented, GlassCard, GlassSlider } from '@zakisheriff/liquid-glass';
+import { useEffect, useState } from 'react';
+import { GlassButton, GlassInput, GlassSwitch, GlassSegmented, GlassCard, GlassSlider, GlassSheet } from '@zakisheriff/liquid-glass';
 import { useSyncExternalStore } from 'react';
 import { useOrbit, connect, disconnect, pushToast, setPrefs, destroyVault, openVaultSheet, wipeAll, ACCENTS } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
-import { aiChat, AI_PROVIDERS, type AIProvider } from '@/lib/ai';
+import { aiChat, aiListModels, AI_PROVIDERS, type AIProvider } from '@/lib/ai';
+import { auditSecrets } from '@/lib/security';
 import { GitHubError } from '@/lib/github';
 import { Section, Row, Diag, ConfirmSheet } from '@/components/bits';
-import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash } from '@/components/Icons';
+import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash, IcList } from '@/components/Icons';
 
 export default function ControlPage() {
   const state = useOrbit();
@@ -21,6 +22,12 @@ export default function ControlPage() {
   const [wipe, setWipe] = useState(false);
   const [wipeVault, setWipeVault] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [models, setModels] = useState<Array<{ id: string; name: string }> | null>(null);
+  const [modelsOpen, setModelsOpen] = useState(false);
+  const [modelsBusy, setModelsBusy] = useState(false);
+  const [audit, setAudit] = useState(-1);
+
+  useEffect(() => { setAudit(auditSecrets()); }, []);
 
   async function doConnect() {
     const t = tok.trim().replace(/\s+/g, '');
@@ -46,6 +53,19 @@ export default function ControlPage() {
     } catch (e) {
       pushToast('IA no responde', 'err', e instanceof Error ? e.message : '');
     } finally { setBusy(false); }
+  }
+
+  async function loadModels() {
+    if (!state.prefs.aiKey) { pushToast('Pon la clave primero', 'err'); return; }
+    setModelsBusy(true); setModelsOpen(true);
+    try {
+      const list = await aiListModels(state.prefs.aiProvider, state.prefs.aiKey);
+      setModels(list);
+      pushToast('Modelos disponibles', 'ok', list.length + ' modelos accesibles con tu clave');
+    } catch (e) {
+      setModels([]);
+      pushToast('No se pudieron listar', 'err', e instanceof Error ? e.message : '');
+    } finally { setModelsBusy(false); }
   }
 
   const p = state.prefs;
@@ -163,9 +183,28 @@ export default function ControlPage() {
           <Row label="Modelo" sub={'Por defecto: ' + AI_PROVIDERS[provIdx < 0 ? 0 : provIdx].model}>
             <GlassInput placeholder={AI_PROVIDERS[provIdx < 0 ? 0 : provIdx].model} value={p.aiModel} onChange={e => setPrefs({ aiModel: e.target.value })} aria-label="Modelo" />
           </Row>
-          <div style={{ marginTop: 12, display: 'flex', gap: 10 }}>
+          <div style={{ marginTop: 12, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <GlassButton disabled={busy || !p.aiKey} onClick={testAI}>Probar conexión</GlassButton>
+            <GlassButton icon={<IcList size={14} />} disabled={modelsBusy || !p.aiKey} onClick={loadModels}>
+              {modelsBusy ? 'Listando…' : 'Ver modelos disponibles'}
+            </GlassButton>
           </div>
+        </GlassCard>
+      </Section>
+
+      <Section title="Seguridad · Zero Trust" sub="Redacción de secretos, auditoría del código cargado y datos solo locales">
+        <GlassCard padding="18px">
+          <Row label="Auditoría de credenciales" sub="Busca tokens/claves embebidas en el código que tu navegador tiene cargado ahora mismo">
+            <span className={`chip ${audit === 0 ? 'ok' : 'err'}`} style={{ fontSize: 13 }}>
+              {audit < 0 ? '—' : audit === 0 ? '0 secretos ✓' : audit + ' sospechoso(s)'}
+            </span>
+          </Row>
+          <Row label="Redacción en pantalla" sub="Toasts, actividad y errores redactan automáticamente cualquier token que pudiera filtrarse">
+            <span className="chip ok">activo</span>
+          </Row>
+          <Row label="Archivos sensibles al subir" sub="Explorer detecta .env, .pem, id_rsa y similares, los marca y los excluye por defecto">
+            <span className="chip ok">activo</span>
+          </Row>
         </GlassCard>
       </Section>
 
@@ -199,6 +238,21 @@ export default function ControlPage() {
         confirmLabel="Eliminar bóveda"
         onConfirm={() => destroyVault()}
       />
+
+      {/* Modelos disponibles del proveedor */}
+      <GlassSheet open={modelsOpen} onClose={() => setModelsOpen(false)} detents={['medium', 'large']} aria-label="Modelos disponibles">
+        <div className="sheet-head"><h3>Modelos del proveedor</h3></div>
+        <p className="sheet-text">Lista real de los modelos que tu clave tiene accesibles. Elige uno para usarlo en el chat.</p>
+        <div className="picker-list">
+          {(models || []).map(m => (
+            <button key={m.id} className="picker-item" onClick={() => { setPrefs({ aiModel: m.id }); setModelsOpen(false); pushToast('Modelo elegido', 'ok', m.id); }}>
+              <b className="mono">{m.id}</b>
+              <small>{m.name !== m.id ? m.name : ''}</small>
+            </button>
+          ))}
+          {models && !models.length ? <p className="picker-none">La clave no devolvió modelos (o el proveedor no soporta listarlos).</p> : null}
+        </div>
+      </GlassSheet>
     </>
   );
 }

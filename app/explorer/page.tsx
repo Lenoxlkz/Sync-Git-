@@ -5,13 +5,16 @@
    leyendo el árbol final. Con sincronización espejo opcional. */
 
 import { useEffect, useRef, useState, type DragEvent } from 'react';
-import { GlassButton, GlassInput, GlassSwitch, GlassCard, GlassSegmented } from '@zakisheriff/liquid-glass';
+import { GlassButton, GlassInput, GlassSwitch, GlassCard, GlassSegmented, GlassSheet } from '@zakisheriff/liquid-glass';
 import { useOrbit, setPrefs, pushToast } from '@/lib/store';
-import { gh, GitHubError, type GHTreeEntry } from '@/lib/github';
+import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
 import { analyze, commitOrbit, type FileEntry, type Plan, type CommitResult } from '@/lib/upload';
+import { lineDiff, type DiffResult } from '@/lib/code';
+import { isSecretPath, isBinPath, normPath } from '@/lib/security';
 import { readZip } from '@/lib/zip';
 import { Section, NeedConn, Diag, Spinner, RepoPicker, BranchPicker } from '@/components/bits';
-import { IcUpload, IcFolder, IcFile, IcRefresh, IcCloud, IcCheck, IcWarn, IcExternal, IcTrash } from '@/components/Icons';
+import { SideBySide } from '@/components/diff';
+import { IcUpload, IcFolder, IcFile, IcRefresh, IcCloud, IcCheck, IcWarn, IcExternal, IcTrash, IcCompare } from '@/components/Icons';
 
 export default function ExplorerPage() {
   const { connected, repos, prefs } = useOrbit();
@@ -27,8 +30,29 @@ export default function ExplorerPage() {
   const [result, setResult] = useState<CommitResult | null>(null);
   const [err, setErr] = useState('');
   const [over, setOver] = useState(false);
+  const [includeSecrets, setIncludeSecrets] = useState(false);
+  const [secretCount, setSecretCount] = useState(0);
+  const [invalidCount, setInvalidCount] = useState(0);
+  const [cmpOpen, setCmpOpen] = useState(false);
+  const [cmpEntry, setCmpEntry] = useState<(FileEntry & { remoteSha?: string }) | null>(null);
+  const [cmpDiff, setCmpDiff] = useState<DiffResult | 'bin' | null>(null);
+  const [cmpBusy, setCmpBusy] = useState(false);
   const [pickRepo, setPickRepo] = useState(false);
   const [pickBranch, setPickBranch] = useState(false);
+
+  async function openCompare(e: FileEntry & { remoteSha?: string }) {
+    setCmpEntry(e); setCmpDiff(null); setCmpOpen(true); setCmpBusy(true);
+    try {
+      const remoteText = e.remoteSha ? await blobText(repo, e.remoteSha, e.path) : '';
+      if (isBinPath(e.path) || e.file.size > 1024 * 1024) { setCmpDiff('bin'); return; }
+      const localText = await e.file.text();
+      if (localText.includes('\u0000')) { setCmpDiff('bin'); return; }
+      setCmpDiff(lineDiff(localText, remoteText) || 'bin');
+    } catch (errC) {
+      pushToast('No se pudo leer la versión remota', 'err', errC instanceof Error ? errC.message : '');
+      setCmpDiff(null);
+    } finally { setCmpBusy(false); }
+  }
   const dirRef = useRef<HTMLInputElement>(null);
   const zipRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -45,11 +69,24 @@ export default function ExplorerPage() {
   }
 
   function addEntries(list: FileEntry[]) {
+    const clean: FileEntry[] = [];
+    let invalid = 0, secrets = 0;
+    for (const e of list) {
+      const p = normPath(e.path);
+      if (!p) { invalid++; continue; }
+      const secret = isSecretPath(p);
+      if (secret) secrets++;
+      clean.push({ ...e, path: p, secret });
+    }
+    setInvalidCount(invalid);
+    setSecretCount(secrets);
+    if (invalid) pushToast(invalid + ' archivo(s) descartado(s)', 'info', 'Rutas inválidas para Git (con «..», vacías o absolutas)');
+    if (secrets) pushToast(secrets + ' archivo(s) marcados como posibles secretos', 'warn' as 'info', 'Se excluyen por defecto; actívalos con «Incluir secretos» si de verdad quieres enviarlos');
     setFiles(prev => {
       const map = new Map(prev.map(e => [e.path, e]));
-      for (const e of list) map.set(e.path, e);
+      for (const e of clean) map.set(e.path, e);
       const merged = [...map.values()];
-      pushToast(merged.length + ' archivos en cola', 'ok', list.length + ' añadidos ahora · ' + (new Set(list.map(x => x.path)).size) + ' rutas nuevas');
+      pushToast(merged.length + ' archivos en cola', 'ok', clean.length + ' añadidos ahora');
       return merged;
     });
     setPlan(null); setResult(null);
@@ -76,6 +113,10 @@ export default function ExplorerPage() {
 
   async function runAnalyze() {
     if (!files.length || !repo || !branch) return;
+    const eff = files.filter(f => !f.secret || includeSecrets);
+    const hidden = files.length - eff.length;
+    if (hidden) pushToast(hidden + ' secreto(s) excluidos del análisis', 'info', 'Activa «Incluir secretos» para mandarlos también');
+    if (!eff.length) { setErr('Nada que analizar: todos los archivos están excluidos.'); return; }
     setAnalyzing(true); setErr(''); setResult(null);
     try {
       const br = await gh.branches(repo).catch(() => []);
@@ -86,7 +127,7 @@ export default function ExplorerPage() {
         treeEntries = tree.tree;
         if (tree.truncated) pushToast('Árbol enorme truncado por GitHub', 'err', 'La comparación solo cubre parte del repo');
       }
-      const p = await analyze(files, treeEntries, sync, (done, total) => setProgress({ stage: 'análisis', done, total }));
+      const p = await analyze(eff, treeEntries, sync, (done, total) => setProgress({ stage: 'análisis', done, total }));
       setPlan(p);
       pushToast('Análisis listo', 'ok', `${p.creates.length} nuevos · ${p.updates.length} cambiados · ${p.skips.length} idénticos`);
     } catch (e) {
@@ -115,7 +156,6 @@ export default function ExplorerPage() {
 
   const total = plan ? plan.creates.length + plan.updates.length : 0;
   const rows = plan ? [...plan.creates.map(e => ({ e, kind: 'nuevo' })), ...plan.updates.map(e => ({ e, kind: 'cambiado' })), ...plan.skips.slice(0, 60).map(e => ({ e, kind: 'igual' }))] : [];
-
   return (
     <Section
       title="Explorer · subida delta"
@@ -162,6 +202,15 @@ export default function ExplorerPage() {
         <div className="orbit-row-text"><b>Sincronizar espejo</b><small>Borra del repo lo que ya no exista en tu carpeta local</small></div>
         <GlassSwitch checked={sync} onChange={setSync} tint="var(--orbit-accent)" aria-label="Sincronizar espejo" />
       </div>
+      {secretCount ? (
+        <div className="orbit-row">
+          <div className="orbit-row-text"><b>Incluir secretos</b><small>{secretCount} archivo(s) parecen credenciales (.env, .pem, claves…): se excluyen por defecto. Inclúyelos solo a propósito.</small></div>
+          <GlassSwitch checked={includeSecrets} onChange={v => { setIncludeSecrets(v); setPlan(null); }} tint="var(--warn)" aria-label="Incluir secretos" />
+        </div>
+      ) : null}
+      {invalidCount ? (
+        <p className="tiny" style={{ color: 'var(--warn)' }}>{invalidCount} archivo(s) con ruta inválida fueron descartados al añadirse.</p>
+      ) : null}
       <div className="orbit-row">
         <div className="orbit-row-text"><b>Mensaje del commit</b><small>Si lo dejas vacío, Orbit redacta uno con el resumen</small></div>
         <GlassInput placeholder="Orbit: subida delta…" value={message} onChange={e => setMessage(e.target.value)} aria-label="Mensaje del commit" />
@@ -197,13 +246,22 @@ export default function ExplorerPage() {
             <GlassCard padding="10px">
               <div className="table-wrap">
                 <table className="plan-table">
-                  <thead><tr><th>Ruta</th><th>Acción</th><th>Tamaño</th></tr></thead>
+                  <thead><tr><th>Ruta</th><th>Acción</th><th>Tamaño</th><th>Comparar</th></tr></thead>
                   <tbody>
                     {rows.slice(0, 150).map(({ e, kind }) => (
                       <tr key={e.path}>
-                        <td className="mono" style={{ maxWidth: 380, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.path}</td>
+                        <td className="mono" style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.path}{(e as FileEntry).secret ? <span className="chip warn" style={{ marginLeft: 6 }}>secreto</span> : null}
+                        </td>
                         <td><span className={`chip ${kind === 'nuevo' ? 'ok' : kind === 'cambiado' ? 'warn' : ''}`}>{kind}</span></td>
                         <td>{(e.file.size / 1024).toFixed(1)} KB</td>
+                        <td>
+                          {kind === 'cambiado' ? (
+                            <button className="chip-btn" onClick={() => openCompare(e as FileEntry & { remoteSha?: string })}>
+                              <IcCompare size={12} /> Diff
+                            </button>
+                          ) : <span className="tiny">—</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -238,6 +296,27 @@ export default function ExplorerPage() {
 
       <RepoPicker open={pickRepo} onClose={() => setPickRepo(false)} onPick={(r) => { setRepo(r); const d = defaultBranch(r); setBranch(d); setPrefs({ lastRepo: r, lastBranch: d }); setPlan(null); }} />
       <BranchPicker open={pickBranch} onClose={() => setPickBranch(false)} repo={repo} onPick={(b) => { setBranch(b); setPrefs({ lastBranch: b }); setPlan(null); }} />
+
+      {/* Comparación lado a lado: tu versión vs la del repo */}
+      <GlassSheet open={cmpOpen} onClose={() => setCmpOpen(false)} detents={['large']} aria-label="Comparar con el repo">
+        <div className="sheet-head"><h3><IcCompare size={15} /> {cmpEntry?.path}</h3></div>
+        {cmpBusy ? <div style={{ padding: 20, textAlign: 'center' }}><Spinner size={22} /></div>
+          : cmpDiff === 'bin' ? (
+            <div className="note"><IcFile size={15} /><span>Archivo <b>binario o demasiado grande para diff de texto</b>: decide con los botones de abajo o revisa los metadatos del plan.</span></div>
+          ) : cmpDiff ? (
+            <SideBySide d={cmpDiff} />
+          ) : (
+            <p className="tiny">Sin diff disponible para este archivo.</p>
+          )}
+        {cmpEntry ? (
+          <p className="tiny" style={{ marginTop: 10 }}>
+            La subida usa <b>tu versión local</b> (la más reciente) salvo que quites el archivo de la cola. Esto es solo una previsualización: nada se envía aquí.
+          </p>
+        ) : null}
+        <div className="sheet-actions">
+          <GlassButton onClick={() => setCmpOpen(false)}>Cerrar</GlassButton>
+        </div>
+      </GlassSheet>
     </Section>
   );
 }

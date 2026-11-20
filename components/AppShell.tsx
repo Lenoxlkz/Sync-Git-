@@ -1,16 +1,21 @@
 'use client';
 
-/* AppShell: chrome de Orbit Next — sidebar (escritorio), topbar, GlassNav
-   flotante (móvil), toasts, bóveda, arranque de la sesión y efectos globales. */
-import { useEffect, useState } from 'react';
+/* AppShell: chrome de Orbit Next — sidebar (escritorio) con búsqueda global y
+   actividad reciente, topbar, GlassNav flotante (móvil), toasts y bóveda. */
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { GlassNav, GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
-import { useOrbit, boot, applyAppearance, unlockVault, createVault, pushToast } from '@/lib/store';
+import { useOrbit, boot, applyAppearance, unlockVault, createVault, pushToast, openFicha } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
+import { useActivity, clearActivity } from '@/lib/activity';
 import { ToastStack } from './Toast';
 import { Diag } from './bits';
-import { IcChat, IcRepo, IcPR, IcIssue, IcUpload, IcSettings, IcMenu, IcShield, IcLock, IcDownload, IcKey, IcUser } from './Icons';
+import {
+  IcChat, IcRepo, IcPR, IcIssue, IcUpload, IcSettings, IcMenu, IcShield, IcLock, IcDownload, IcKey, IcUser,
+  IcCode, IcBook, IcFolder, IcCommit, IcCompare, IcSearch, IcArchive, IcX, IcActivity, IcRotate, IcCheck,
+  IcAlert, IcMerge, IcTrash, IcFork, IcGlobe, IcWifi, IcEdit, IcInfo, IcZap, IcFolderPlus, IcBranch,
+} from './Icons';
 
 const NAV = [
   { href: '/', label: 'Chat', icon: <IcChat size={20} /> },
@@ -18,15 +23,31 @@ const NAV = [
   { href: '/pulls/', label: 'PRs', icon: <IcPR size={20} /> },
   { href: '/issues/', label: 'Issues', icon: <IcIssue size={20} /> },
   { href: '/explorer/', label: 'Subir', icon: <IcUpload size={20} /> },
+  { href: '/code/', label: 'Código', icon: <IcCode size={20} /> },
   { href: '/control/', label: 'Control', icon: <IcSettings size={20} /> },
+  { href: '/guide/', label: 'Guía', icon: <IcBook size={20} /> },
 ];
+
+/* iconos del registro de actividad (nombres simbólicos de logAct) */
+const ACT_ICONS: Record<string, React.ReactNode> = {
+  folder: <IcFolder size={13} />, 'folder-plus': <IcFolderPlus size={13} />, branch: <IcBranch size={13} />,
+  commit: <IcCommit size={13} />, issue: <IcIssue size={13} />, pr: <IcPR size={13} />, search: <IcSearch size={13} />,
+  compare: <IcCompare size={13} />, upload: <IcUpload size={13} />, wifi: <IcWifi size={13} />,
+  code: <IcCode size={13} />, archive: <IcArchive size={13} />, lock: <IcLock size={13} />, key: <IcKey size={13} />,
+  shield: <IcShield size={13} />, edit: <IcEdit size={13} />, rotate: <IcRotate size={13} />, check: <IcCheck size={13} />,
+  'x': <IcX size={13} />, merge: <IcMerge size={13} />, trash: <IcTrash size={13} />, fork: <IcFork size={13} />,
+  globe: <IcGlobe size={13} />, alert: <IcAlert size={13} />, info: <IcInfo size={13} />, chat: <IcChat size={13} />,
+  zap: <IcZap size={13} />,
+};
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const state = useOrbit();
-  const pathname = usePathname();
+  const activity = useActivity();
+  const pathname = usePathname() || '/';
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [installEv, setInstallEv] = useState<{ prompt: () => void } | null>(null);
+  const [gs, setGs] = useState('');
 
   /* arranque: restaura sesión/bóveda/prefs una sola vez */
   useEffect(() => { boot().catch(() => { /* silencio */ }); }, []);
@@ -61,6 +82,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => clearInterval(t);
   }, [state.connected, state.rate, state.user]);
 
+  const gsResults = useMemo(() => {
+    const q = gs.trim().toLowerCase();
+    if (!q) return [];
+    return state.repos.filter(r => r.name.toLowerCase().includes(q) || r.full_name.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q)).slice(0, 6);
+  }, [gs, state.repos]);
+
   const activeIndex = NAV.findIndex(n => n.href === '/' ? pathname === '/' : pathname.startsWith(n.href));
   const current = NAV[activeIndex] ?? NAV[0];
 
@@ -72,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <span className="brand-logo" aria-hidden="true" />
           <span className="brand-text">
             <b>GitHub Orbit</b>
-            <small>Centro de mando · v2.0</small>
+            <small>Centro de mando · v3.0</small>
           </span>
         </Link>
         <nav className="side-nav">
@@ -83,11 +110,44 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="side-foot">
+          {/* búsqueda global sobre repos */}
+          <div className="gs-wrap">
+            <GlassInput
+              type="search" placeholder="Buscar en tus repos…"
+              value={gs} onChange={e => setGs(e.target.value)} aria-label="Búsqueda global"
+            />
+            {gsResults.length ? (
+              <div className="gs-results">
+                {gsResults.map(r => (
+                  <button key={r.id} className="gs-item" onClick={() => { openFicha(r.full_name); setGs(''); }}>
+                    <IcFolder size={15} />
+                    <div className="gs-main"><b>{r.name}</b><small>Repositorio · {r.language || '—'}</small></div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
           <Link href="/control/" className={`conn-pill${state.connected ? ' on' : ''}`}>
             {state.connected ? <IcUser size={13} /> : <IcKey size={13} />}
             <span>{state.connected ? '@' + state.user?.login : 'Sin conexión'}</span>
           </Link>
           <small className="side-ver">Next.js · Liquid Glass</small>
+
+          {/* actividad reciente */}
+          <div className="rail-act">
+            <div className="rail-act-h">
+              <IcActivity size={12} /> Actividad
+              {activity.length ? <button aria-label="Limpiar actividad" onClick={() => { clearActivity(); pushToast('Actividad limpiada', 'ok'); }}><IcX size={12} /></button> : null}
+            </div>
+            {activity.length
+              ? activity.slice(0, 8).map((a, i) => (
+                <div key={a.t + '-' + i} className="act-item">
+                  {ACT_ICONS[a.icon] ?? <IcInfo size={13} />}
+                  <div style={{ minWidth: 0 }}><b>{a.text}</b><span>{a.sub}</span></div>
+                </div>
+              ))
+              : <div className="rail-empty">Sin actividad todavía. Las operaciones que hagas aparecerán aquí.</div>}
+          </div>
         </div>
       </aside>
 

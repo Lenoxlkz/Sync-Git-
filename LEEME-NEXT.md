@@ -1,4 +1,4 @@
-# Orbit Next v2.0 — Next.js + Liquid Glass
+# Orbit Next v3.0 — Next.js + Liquid Glass
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -20,6 +20,21 @@ rama avanzó, PRs (comentar/fusionar/cerrar), issues (crear/comentar/cerrar),
 creación y borrado de repos, bóveda AES-256-GCM (PBKDF2 150k), NetKeep con
 objetivo de caudal, IA multi-proveedor (OpenAI · GLM · Gemini), PWA instalable,
 háptica y título vivo con la cuota.**
+
+
+## Novedades v3.0 — paridad total con el HTML original
+
+- **Code Explorer** (`/code/`): árbol de archivos real del repo, visor con resaltado de sintaxis y números de línea, búsqueda interna con saltos, copiar/descargar, **edición con commit real**, previsualización de Markdown/HTML (iframe aislado) y **comparador de ramas** con diff archivo por archivo.
+- **Chat en lenguaje natural**: el mismo parser de intents del original («muéstrame mis repositorios», «compara main con development», «crea una rama llamada development», «busca archivos que contengan X», «prepara un pull request»…) con **tarjetas visuales** en la conversación, markdown, saludos, cambio de tema por voz y bienvenida con referencia de comandos.
+- **IA con superpoderes**: el modelo recibe el contexto de tu cuenta y puede **ejecutar comandos por ti** con bloques ```orbit {"command":…}```; además, «Ver modelos disponibles» lista los modelos reales de tu clave en el proveedor.
+- **Ficha de repositorio**: pestañas Información · Ramas (crear/eliminar) · Commits · Tags · **Releases con paquetes adjuntos** (hasta 350 MB por archivo, ventana de reconsideración de 120 s, subida directa a uploads.github.com con progreso y reintentos).
+- **Repositorios**: filtros por lenguaje, orden (recientes/A-Z/★), vista tarjetas/lista, **menú contextual** (clic derecho): ficha, Code Explorer, fork, cambiar visibilidad, eliminar escribiendo el nombre.
+- **Pull Requests globales** de toda la cuenta con **diff de archivos del cambio**, revisión (aprobar / pedir cambios / comentar), merge (merge/squash/rebase) y **asistente de creación** con confirmación.
+- **Issues globales** con filtro por etiquetas, creación con etiquetas y **edición** de título/descripción.
+- **Explorer reforzado**: detección de **secretos** (.env, .pem, id_rsa…) excluidos por defecto con interruptor explícito, normalización Zero Trust de rutas y **comparación lado a lado** (tu versión vs la del repo) antes de subir.
+- **Seguridad Zero Trust**: redacción automática de tokens en pantalla, auditoría de credenciales en Control Center, verificación de integridad SHA-1 al leer blobs.
+- **Rail de actividad** en la barra lateral con las operaciones recientes y **búsqueda global** de repos.
+- **Guía** integrada: conceptos en palabras simples, comandos y notas de seguridad.
 
 ## Rendimiento
 

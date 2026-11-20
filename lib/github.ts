@@ -17,14 +17,15 @@ export interface GHRepo {
   private: boolean; description?: string | null; html_url: string;
   default_branch: string; stargazers_count: number; forks_count: number;
   size: number; language?: string | null; pushed_at: string; updated_at: string; fork: boolean;
+  open_issues_count?: number;
 }
 export interface GHBranch { name: string; commit: { sha: string }; protected?: boolean }
 export interface GHTreeEntry { path: string; mode: string; type: 'blob' | 'tree' | 'commit'; sha: string; size?: number }
 export interface GHTree { sha: string; truncated?: boolean; tree: GHTreeEntry[] }
 export interface GHPull {
   number: number; title: string; user: { login: string }; state: string;
-  body?: string | null; html_url: string; created_at: string;
-  head: { ref: string; sha: string }; base: { ref: string }; merged?: boolean; comments?: number;
+  body?: string | null; html_url: string; created_at: string; draft?: boolean;
+  head: { ref: string; sha: string }; base: { ref: string; repo: { full_name: string } }; merged?: boolean; comments?: number;
 }
 export interface GHIssue {
   number: number; title: string; user: { login: string }; state: string;
@@ -33,6 +34,24 @@ export interface GHIssue {
 }
 export interface GHComment { id: number; user: { login: string }; body: string; created_at: string }
 export interface GHCommit { sha: string; html_url: string; commit: { message: string } }
+export interface GHCommitFull {
+  sha: string; html_url: string; commit: { message: string; author: { name: string; date: string } };
+  author: { login: string; avatar_url: string } | null;
+}
+export interface GHCompareFile {
+  filename: string; status: string; additions: number; deletions: number; changes: number; patch?: string;
+}
+export interface GHCompare {
+  status: string; ahead_by: number; behind_by: number; total_commits: number;
+  files: GHCompareFile[];
+  commits: GHCommitFull[];
+}
+export interface GHSearchItem { path: string; text_matches?: Array<{ fragment?: string }> }
+export interface GHRelease {
+  id: number; tag_name: string; name: string | null; body: string | null;
+  html_url: string; published_at: string | null; assets: Array<{ id: number; name: string; size: number }>;
+}
+export interface GHTag { name: string; commit: { sha: string } }
 
 export class GitHubError extends Error {
   status: number; github?: string;
@@ -156,10 +175,42 @@ export const gh = {
     req<GHPull>(`/repos/${repo}/pulls/${num}`, { method: 'PATCH', body: { state } }),
 
   issues: (repo: string, state: string) => req<GHIssue[]>(`/repos/${repo}/issues?state=${state}&per_page=50`),
-  issueCreate: (repo: string, title: string, body: string) =>
-    req<GHIssue>(`/repos/${repo}/issues`, { method: 'POST', body: { title, body } }),
+  issuesAll: (state: string) =>
+    req<GHIssue[]>(`/issues?state=${state}&per_page=60&sort=updated&filter=all`),
+  issueCreate: (repo: string, title: string, body: string, labels?: string[]) =>
+    req<GHIssue>(`/repos/${repo}/issues`, { method: 'POST', body: { title, body, labels: labels || undefined } }),
+  issueEdit: (repo: string, num: number, patch: { title?: string; body?: string }) =>
+    req<GHIssue>(`/repos/${repo}/issues/${num}`, { method: 'PATCH', body: patch }),
   issueSetState: (repo: string, num: number, state: string) =>
     req<GHIssue>(`/repos/${repo}/issues/${num}`, { method: 'PATCH', body: { state } }),
+
+  commits: (repo: string, branch: string, n = 8) =>
+    req<GHCommitFull[]>(`/repos/${repo}/commits?sha=${enc(branch)}&per_page=${n}`),
+  compare: (repo: string, base: string, head: string) =>
+    req<GHCompare>(`/repos/${repo}/compare/${enc(base)}...${enc(head)}`),
+  searchCode: (repo: string, term: string) =>
+    req<{ items: GHSearchItem[] }>('/search/code?q=' + enc(`${term} repo:${repo}`) + '&per_page=30',
+      { headers: { Accept: 'application/vnd.github.text-match+json' } }),
+
+  tags: (repo: string) => req<GHTag[]>(`/repos/${repo}/tags?per_page=30`),
+  releases: (repo: string) => req<GHRelease[]>(`/repos/${repo}/releases?per_page=20`),
+  releaseCreate: (repo: string, body: { tag_name: string; name?: string; body?: string; target_commitish?: string }) =>
+    req<GHRelease>(`/repos/${repo}/releases`, { method: 'POST', body }),
+
+  blob: (repo: string, sha: string) =>
+    req<{ content: string; encoding: string; size: number }>(`/repos/${repo}/git/blobs/${sha}`),
+
+  fork: (repo: string) => req<GHRepo>(`/repos/${repo}/forks`, { method: 'POST' }),
+  setVisibility: (repo: string, isPrivate: boolean) =>
+    req<GHRepo>(`/repos/${repo}`, { method: 'PATCH', body: { private: isPrivate } }),
+  branchDelete: (repo: string, branch: string) =>
+    req<null>(`/repos/${repo}/git/refs/heads/${enc(branch)}`, { method: 'DELETE' }),
+
+  pullsAll: (state: string) => req<GHPull[]>(`/pulls?state=${state}&per_page=50&sort=updated`),
+  pullCreate: (repo: string, body: { title: string; body?: string; head: string; base: string }) =>
+    req<GHPull>(`/repos/${repo}/pulls`, { method: 'POST', body }),
+  pullReview: (repo: string, num: number, event: string, bodyText: string) =>
+    req<unknown>(`/repos/${repo}/pulls/${num}/reviews`, { method: 'POST', body: { event, body: bodyText } }),
 };
 
 /* Helpers de Git que necesitan bytes: SHA-1 de blob y base64 por bloques */
@@ -180,4 +231,59 @@ export async function fileToB64(file: File): Promise<string> {
     out += String.fromCharCode(...bytes.subarray(i, i + CH));
   }
   return btoa(out);
+}
+
+/** SHA-1 de blob Git a partir de texto UTF-8 (verificación de integridad). */
+export async function blobShaText(text: string): Promise<string> {
+  const data = new TextEncoder().encode(text);
+  const header = new TextEncoder().encode(`blob ${data.length}\0`);
+  const full = new Uint8Array(header.length + data.length);
+  full.set(header); full.set(data, header.length);
+  const digest = await crypto.subtle.digest('SHA-1', full);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Contenido de un blob por SHA (base64 → texto) con verificación de integridad. */
+export async function blobText(repo: string, sha: string, pathForError = ''): Promise<string> {
+  const b = await gh.blob(repo, sha);
+  if (b.encoding !== 'base64') throw new GitHubError('Blob con codificación inesperada: ' + b.encoding, 0);
+  const bin = atob(b.content.replace(/\n/g, ''));
+  const text = new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)));
+  const real = await blobShaText(text).catch(() => null);
+  if (real && real !== sha.toLowerCase()) {
+    throw new GitHubError(`Integridad: el contenido no coincide con el árbol Git (${pathForError})`, 0);
+  }
+  return text;
+}
+
+/** Crea una rama desde otra (resuelve el SHA de la rama origen). */
+export async function createBranch(repo: string, name: string, from: string): Promise<void> {
+  const ref = (await gh.ref(repo, from)).object.sha;
+  await req<{ ref: string }>(`/repos/${repo}/git/refs`, {
+    method: 'POST',
+    body: { ref: 'refs/heads/' + name, sha: ref },
+  });
+}
+
+/** Sube un paquete adjunto a una release (uploads.github.com, con progreso). */
+export function uploadReleaseAsset(repo: string, releaseId: number, file: File,
+  onProgress?: (p: { loaded: number; total: number }) => void): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://uploads.github.com/repos/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(file.name)}`);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + _token);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    xhr.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress({ loaded: e.loaded, total: e.total }); };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        let r: unknown = null;
+        try { r = JSON.parse(xhr.responseText); } catch { /* sin cuerpo */ }
+        resolve(r);
+      } else {
+        reject(new Error('La subida devolvió ' + xhr.status + (xhr.status === 422 ? ' (nombre duplicado en la release)' : '')));
+      }
+    };
+    xhr.onerror = () => reject(new Error('No se pudo conectar con uploads.github.com (revisa la red o el bloqueo del navegador)'));
+    xhr.send(file);
+  });
 }

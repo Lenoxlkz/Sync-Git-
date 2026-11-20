@@ -122,18 +122,31 @@ export function BranchPicker({ open, onClose, repo, onPick }: { open: boolean; o
   );
 }
 
-/* Confirmación destructiva genérica */
-export function ConfirmSheet({ open, onClose, title, text, confirmLabel, onConfirm }: {
-  open: boolean; onClose: () => void; title: string; text: string; confirmLabel: string; onConfirm: () => Promise<void> | void;
+/* Confirmación destructiva genérica (opcionalmente exige escribir un nombre) */
+export function ConfirmSheet({ open, onClose, title, text, confirmLabel, onConfirm, typeTo }: {
+  open: boolean; onClose: () => void; title: string; text: string; confirmLabel: string;
+  onConfirm: () => Promise<void> | void; typeTo?: string;
 }) {
   const [busy, setBusy] = useState(false);
+  const [typed, setTyped] = useState('');
+  useEffect(() => { if (!open) setTyped(''); }, [open]);
+  const ok = !typeTo || typed.trim() === typeTo;
   return (
     <GlassSheet open={open} onClose={onClose} aria-label={title}>
       <h3 className="sheet-title">{title}</h3>
       <p className="sheet-text">{text}</p>
+      {typeTo ? (
+        <div style={{ margin: '10px 0 4px' }}>
+          <GlassInput
+            placeholder={'Escribe ' + typeTo + ' para confirmar'} value={typed}
+            onChange={e => setTyped(e.target.value)} aria-label="Confirmación por nombre"
+            className="mono" tint="var(--orbit-accent)"
+          />
+        </div>
+      ) : null}
       <div className="sheet-actions">
         <GlassButton onClick={onClose} disabled={busy}>Cancelar</GlassButton>
-        <GlassButton variant="filled" destructive disabled={busy}
+        <GlassButton variant="filled" destructive disabled={busy || !ok}
           onClick={async () => { setBusy(true); try { await onConfirm(); onClose(); } finally { setBusy(false); } }}>
           {busy ? 'Trabajando…' : confirmLabel}
         </GlassButton>
@@ -141,6 +154,36 @@ export function ConfirmSheet({ open, onClose, title, text, confirmLabel, onConfi
     </GlassSheet>
   );
 }
+
+/* Menú contextual (clic derecho / pulsación larga) */
+export interface CtxItem { label: string; icon?: ReactNode; danger?: boolean; fn?: () => void; sep?: boolean }
+export function ContextMenu({ pos, items, onClose }: {
+  pos: { x: number; y: number } | null; items: CtxItem[]; onClose: () => void;
+}) {
+  if (!pos) return null;
+  const x = Math.min(pos.x, (typeof window !== 'undefined' ? window.innerWidth : 999) - 230);
+  const y = Math.min(pos.y, (typeof window !== 'undefined' ? window.innerHeight : 999) - 60 - items.length * 38);
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 94 }} onClick={onClose} onContextMenu={e => { e.preventDefault(); onClose(); }}>
+      <div className="ctx-menu" style={{ left: Math.max(8, x), top: Math.max(8, y) }}>
+        {items.map((it, i) => it.sep
+          ? <div key={i} className="ctx-sep" />
+          : <button key={i} className={`ctx-item${it.danger ? ' danger' : ''}`} onClick={() => { onClose(); it.fn?.(); }}>
+              {it.icon}<span>{it.label}</span>
+            </button>)}
+      </div>
+    </div>
+  );
+}
+
+/* Color estándar de lenguaje (GitHub linguist) */
+const LANG_COLORS: Record<string, string> = {
+  JavaScript: '#f1e05a', TypeScript: '#3178c6', Python: '#3572A5', CSS: '#563d7c', HTML: '#e34c26',
+  Swift: '#F05138', 'C++': '#f34b7d', C: '#555555', Go: '#00ADD8', Rust: '#dea584', Java: '#b07219',
+  Kotlin: '#A97BFF', Ruby: '#701516', PHP: '#4F5D95', Shell: '#89e051', Dart: '#00B4AB', Vue: '#41b883',
+  SCSS: '#c6538c', 'Jupyter Notebook': '#DA5B0B', CMake: '#EDDEB8',
+};
+export function langColor(l?: string | null): string { return LANG_COLORS[l || ''] || '#8b949e'; }
 
 /* Fecha relativa corta */
 export function relTime(iso: string): string {

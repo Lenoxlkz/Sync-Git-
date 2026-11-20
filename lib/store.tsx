@@ -41,6 +41,9 @@ export interface Toast { id: number; msg: string; type: 'ok' | 'err' | 'info'; s
 
 export type VaultSheet = 'none' | 'unlock' | 'create';
 
+/** Contexto con el que se abre el Code Explorer (desde chat, ficha o búsqueda). */
+export interface CodeCtx { repo?: string; branch?: string; file?: string }
+
 export interface AppState {
   token: string | null;
   user: GHUser | null;
@@ -55,13 +58,18 @@ export interface AppState {
   vaultSheet: VaultSheet;
   vaultError: string;
   toasts: Toast[];
+  fichaRepo: string | null;
+  codeCtx: CodeCtx;
+  chatPrefill: string;
+  /** marca de tiempo: cuando cambia, la vista Pull Requests abre su asistente de creación */
+  createPRSignal: number;
 }
 
 let state: AppState = {
   token: null, user: null, connected: false, connecting: false,
   rate: null, scopes: [], repos: [], prefs: DEFAULT_PREFS,
   vaultExists: false, vaultUnlocked: false, vaultSheet: 'none', vaultError: '',
-  toasts: [],
+  toasts: [], fichaRepo: null, codeCtx: {}, chatPrefill: '', createPRSignal: 0,
 };
 
 const subs = new Set<() => void>();
@@ -94,6 +102,23 @@ export function pushToast(msg: string, type: Toast['type'] = 'info', sub?: strin
 }
 export function dismissToast(id: number) {
   patch({ toasts: state.toasts.filter(t => t.id !== id) });
+}
+
+/* ---------- contexto de ficha / código / chat ---------- */
+export function openFicha(repo: string) { patch({ fichaRepo: repo }); }
+export function closeFicha() { patch({ fichaRepo: null }); }
+export function openCode(ctx: CodeCtx) { patch({ codeCtx: ctx, fichaRepo: null }); }
+export function consumeCodeCtx(): CodeCtx {
+  const c = state.codeCtx;
+  if (c.repo || c.file) patch({ codeCtx: {} });
+  return c;
+}
+export function setChatPrefill(t: string) { patch({ chatPrefill: t }); }
+export function requestCreatePR() { patch({ createPRSignal: Date.now() }); }
+export function consumeCreatePR(): number {
+  const s = state.createPRSignal;
+  if (s) patch({ createPRSignal: 0 });
+  return s;
 }
 
 /* ---------- preferencias + apariencia ---------- */
