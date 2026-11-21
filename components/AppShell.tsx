@@ -9,12 +9,13 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { EngineProvider, AppNav as GlassNav, AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet } from '@/components/ui';
-import { useOrbit, boot, applyAppearance, effectiveEngine, unlockVault, createVault, pushToast, openFicha } from '@/lib/store';
+import { useOrbit, boot, applyAppearance, effectiveEngine, unlockVault, createVault, pushToast, openFicha, setPrefs } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
+import { canAutoRefresh, fireLive, humanLeft, liveInterval, onLive } from '@/lib/live';
 import { capsFromScopes, type Cap } from '@/lib/scopes';
 import { ToastStack } from './Toast';
 import { Diag } from './bits';
-import { IcSearch, IcDownload, IcKey, IcUser, IcFolder, IcShield, IcLock, IcX, IcList } from './Icons';
+import { IcSearch, IcDownload, IcKey, IcUser, IcFolder, IcShield, IcLock, IcX, IcList, IcRefresh } from './Icons';
 import {
   IcChat as IcChatNav, IcRepo as IcRepoNav, IcPR as IcPRNav, IcIssue as IcIssueNav,
   IcUpload as IcUploadNav, IcCode as IcCodeNav, IcSettings as IcSettingsNav, IcBook as IcBookNav,
@@ -62,6 +63,58 @@ const MORE_SUB: Record<string, string> = {
   Control: 'Conexión, IA, apariencia y scopes del token',
   Guía: 'Comandos y conceptos de Git en Orbit',
 };
+
+
+/* Live · píldora EN VIVO + latido global (port del HTML original): cuenta
+   atrás por vista, guardas (oculto/modal/escribiendo/subida) y pausa con
+   cuota baja. Las páginas se refrescan oyendo el evento «orbit:live». */
+function LivePill() {
+  const { connected, rate, prefs } = useOrbit();
+  const [left, setLeft] = useState(() => liveInterval(prefs.liveInt));
+  const [refreshing, setRefreshing] = useState(false);
+  const pulse = () => { setRefreshing(true); setTimeout(() => setRefreshing(false), 900); };
+  useEffect(() => onLive(pulse), []);
+  useEffect(() => { setLeft(liveInterval(prefs.liveInt)); }, [prefs.liveInt]);
+  useEffect(() => {
+    if (!connected) return;
+    const iv = setInterval(() => {
+      if (!prefs.live) { setLeft(liveInterval(prefs.liveInt)); return; }
+      if (!canAutoRefresh()) { setLeft(liveInterval(prefs.liveInt)); return; }
+      if (rate && Number(rate.rem) < 30) {
+        setPrefs({ live: false });
+        pushToast('Cuota de API baja', 'err', 'La actualización en vivo se pausó para proteger tu límite de GitHub');
+        return;
+      }
+      setLeft(l => {
+        if (l <= 1) { fireLive(); return liveInterval(prefs.liveInt); }
+        return l - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [connected, prefs.live, prefs.liveInt, rate]);
+  const on = prefs.live && connected;
+  const title = on
+    ? `EN VIVO · refresco automático cada ${humanLeft(prefs.liveInt)} · clic para pausar`
+    : 'EN VIVO pausado · clic para activar';
+  return (
+    <>
+      <button type="button" className={`live-pill${on ? ' on' : ''}`} title={title} aria-pressed={on}
+        onClick={() => {
+          const nv = !prefs.live;
+          setPrefs({ live: nv });
+          pushToast(nv ? 'Actualización en vivo activada' : 'Actualización en vivo pausada',
+            nv ? 'ok' : 'info',
+            nv ? `Refresco automático cada ${humanLeft(prefs.liveInt)}, sin recargar la página` : 'Usa el botón ⟳ para actualizar manualmente');
+        }}>
+        <span className="live-dot" />
+        <span>{on ? 'EN VIVO' : 'PAUSADO'}</span>
+        <span className="live-count">{on ? (refreshing ? '···' : left > 0 ? humanLeft(left) : '') : ''}</span>
+      </button>
+      <GlassButton size="sm" icon={<IcRefresh size={14} />} aria-label="Actualizar ahora"
+        onClick={() => { fireLive(); pushToast('Vista actualizada', 'ok', connected ? 'Las páginas refrescan sus datos' : 'Conecta tu cuenta para refrescar datos'); }} />
+    </>
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const state = useOrbit();
@@ -158,11 +211,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <OrbitLogo size={26} />
           <span>
             <b>GitHub Orbit</b>
-            <small>Centro de mando · v3.5</small>
+            <small>Centro de mando · v3.6</small>
           </span>
           </Link>
           <div className="tb-title"><h1>{current.label}</h1></div>
           <div className="tb-right">
+            <LivePill />
             {installEv ? (
               <GlassButton size="sm" variant="tinted" tint="var(--orbit-accent)" icon={<IcDownload size={14} />}
                 onClick={() => { installEv.prompt(); setInstallEv(null); }}>

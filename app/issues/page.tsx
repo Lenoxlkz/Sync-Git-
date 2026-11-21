@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppButton as GlassButton, AppInput as GlassInput, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, pushToast } from '@/lib/store';
+import { onLive } from '@/lib/live';
 import { gh, GitHubError, type GHIssue, type GHComment } from '@/lib/github';
 import { logAct } from '@/lib/activity';
 import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, RepoPicker, relTime } from '@/components/bits';
@@ -53,6 +54,7 @@ export default function IssuesPage() {
   }, []);
 
   useEffect(() => { if (connected) void load(stateF); /* eslint-disable-line */ }, [connected, stateF]);
+  useEffect(() => onLive(() => { if (connected) void load(stateF); }), [stateF]); // Live: refresco en silencio
 
   const labels = Array.from(new Set(issues.flatMap(i => i.labels || [])));
   const shown = issues.filter(i => labelF === 'all' || (i.labels || []).includes(labelF));

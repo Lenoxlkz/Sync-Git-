@@ -32,6 +32,8 @@ export interface Prefs {
   aiGatewayKey: string;
   remember: boolean;
   rememberDevice: boolean;
+  live: boolean;
+  liveInt: number;
   lastRepo: string;
   lastBranch: string;
 }
@@ -43,6 +45,7 @@ const DEFAULT_PREFS: Prefs = {
   netkeep: true, netkeepKbps: 40,
   aiProvider: 'openai', aiKey: '', aiModel: '', aiBaseUrl: '', aiGatewayKey: '',
   remember: false, rememberDevice: false, lastRepo: '', lastBranch: '',
+  live: false, liveInt: 60,
 };
 
 export interface Toast { id: number; msg: string; type: 'ok' | 'err' | 'info'; sub?: string }

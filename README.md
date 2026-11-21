@@ -1,4 +1,4 @@
-# GitHub Orbit — Next.js + Liquid Glass · v3.5
+# GitHub Orbit — Next.js + Liquid Glass · v3.6
 
 Centro de mando personal de GitHub: chat en lenguaje natural con IA que ejecuta
 comandos, repos con ficha y releases, PRs con diff y revisión, issues, Code

@@ -5,7 +5,8 @@
    de Markdown/HTML y comparador de ramas con diff archivo por archivo. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet } from '@/components/ui';
-import { useOrbit, consumeCodeCtx, pushToast, setPrefs } from '@/lib/store';
+import { useOrbit, consumeCodeCtx, pushToast, setPrefs  } from '@/lib/store';
+import { onLive } from '@/lib/live';
 import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
 import { detectLang, tokenize, buildTree, saveFileEdit } from '@/lib/code';
 import { logAct } from '@/lib/activity';
@@ -54,15 +55,17 @@ export default function CodePage() {
   const bodyRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  /* contexto desde chat/ficha: abre repo (y archivo) automáticamente */
+  /* contexto desde chat/ficha: abre repo (y archivo) automáticamente.
+     SIN contexto no se entra a ningún repo: se muestran los repos y el
+     usuario elige cuál revisar o editar (como en la web de GitHub). */
   useEffect(() => {
     const ctx = consumeCodeCtx();
-    const defRepo = ctx.repo || prefs.lastRepo || '';
+    const defRepo = ctx.repo || '';
     if (defRepo) {
       setRepo(defRepo);
       const defBranch = ctx.branch
         || repos.find(r => r.full_name === defRepo)?.default_branch
-        || prefs.lastBranch || 'main';
+        || 'main';
       setBranch(defBranch);
       setHead(defBranch);
       setBase('main');
@@ -70,11 +73,15 @@ export default function CodePage() {
         const t = setTimeout(() => openFile(ctx.file!, defRepo, defBranch), 500);
         return () => clearTimeout(t);
       }
+    } else {
+      setPickRepo(true); /* lista de repos para elegir al entrar */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => { if (repo && branch) void loadTree(repo, branch); /* eslint-disable-line */ }, [repo, branch]);
+  /* Live: árbol fresco en silencio (se salta mientras editas un archivo) */
+  useEffect(() => onLive(() => { if (repo && branch && !edit && !saving) void loadTree(repo, branch); }), [repo, branch, edit, saving]);
   useEffect(() => { if (repo && !branches.length) void loadBranches(repo); /* eslint-disable-line */ }, [repo]);
 
   async function loadBranches(r: string) {
@@ -90,8 +97,7 @@ export default function CodePage() {
   async function loadTree(r: string, b: string) {
     setLoadingTree(true); setErr('');
     try {
-      const refSha = (await gh.ref(r, b)).object.sha;
-      const tree = await gh.tree(r, refSha);
+      const tree = await gh.treeAt(r, b);
       const list: CodeFile[] = tree.tree
         .filter((t: GHTreeEntry) => t.type === 'blob')
         .map(t => ({ path: t.path, size: t.size || 0, sha: t.sha }));
@@ -105,7 +111,7 @@ export default function CodePage() {
   async function fetchText(path: string, r: string, b: string): Promise<string> {
     let f = files.find(x => x.path === path);
     if (!f) {
-      const t = await gh.tree(r, (await gh.ref(r, b)).object.sha);
+      const t = await gh.treeAt(r, b);
       const entry = t.tree.find(x => x.path === path && x.type === 'blob');
       if (!entry) throw new GitHubError('Archivo no encontrado en el árbol: ' + path, 404);
       f = { path, size: entry.size || 0, sha: entry.sha };

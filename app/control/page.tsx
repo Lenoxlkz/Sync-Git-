@@ -10,6 +10,7 @@ import { useOrbit, connect, disconnect, pushToast, setPrefs, destroyVault, openV
 import { netKeep } from '@/lib/netkeep';
 import { aiChat, aiListModels, AI_PROVIDERS, provOf } from '@/lib/ai';
 import { CAPS, capsFromScopes } from '@/lib/scopes';
+import { LIVE_INTERVALS } from '@/lib/live';
 import { auditSecrets } from '@/lib/security';
 import { GitHubError } from '@/lib/github';
 import { Section, Row, Diag, ConfirmSheet } from '@/components/bits';
@@ -239,6 +240,17 @@ export default function ControlPage() {
               aria-label="Caudal objetivo de NetKeep"
             />
           </div>
+          <Row label="Actualización en vivo" sub="Refresca la vista actual (repos, PRs, issues, editor, subida) sin recargar: se pausa si hay un diálogo abierto, estás escribiendo, la pestaña está oculta o la cuota baja de 30">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <GlassSwitch checked={p.live} onChange={v => setPrefs({ live: v })} tint="var(--ok)" aria-label="Actualización en vivo" />
+              <GlassSegmented
+                options={[{ label: '30 s' }, { label: '1 min' }, { label: '2 min' }, { label: '5 min' }]}
+                value={Math.max(0, (LIVE_INTERVALS as readonly number[]).indexOf(p.liveInt))}
+                onChange={i => setPrefs({ liveInt: LIVE_INTERVALS[i] })}
+                aria-label="Intervalo de actualización en vivo"
+              />
+            </div>
+          </Row>
           <div className="stat-strip">
             <GlassCard padding="12px 16px" className="stat-box"><small>Estado</small><b style={{ fontSize: 13 }}>{nk.running ? 'activo' : 'apagado'}</b></GlassCard>
             <GlassCard padding="12px 16px" className="stat-box"><small>Ahora</small><b>{nk.kbps} kbps</b></GlassCard>

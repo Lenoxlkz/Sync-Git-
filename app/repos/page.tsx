@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwitch, AppCard as GlassCard, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, loadRepos, pushToast, openFicha, closeFicha, setPrefs } from '@/lib/store';
+import { onLive } from '@/lib/live';
 import { gh, GitHubError } from '@/lib/github';
 import { logAct } from '@/lib/activity';
 import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, ContextMenu, langColor, relTime, fmtSize, type CtxItem } from '@/components/bits';
@@ -37,6 +38,8 @@ export default function ReposPage() {
   const sortKeys: Sort[] = ['updated', 'name', 'stars'];
   const layoutKeys: Layout[] = ['grid', 'list'];
 
+  /* Live: refresco en silencio de la lista de repos */
+  useEffect(() => onLive(() => { if (connected) loadRepos().catch(() => { }); }), [connected]);
   useEffect(() => {
     if (connected && !repos.length && !loading) {
       setLoading(true);

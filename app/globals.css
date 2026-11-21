@@ -695,4 +695,27 @@ html[data-engine="expressive"][data-amoled] {
   --ex-color-surface: #000;
   --ex-color-background: #000;
 }
+
+/* ---------- Live · píldora EN VIVO (topbar, ambos motores) ---------- */
+.live-pill {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-2);
+  border-radius: 999px; padding: 5px 10px; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .06em; cursor: pointer; font: inherit; font-size: 10.5px;
+}
+.live-pill .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); flex: none }
+.live-pill.on { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent) }
+.live-pill.on .live-dot { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent) }
+.live-pill .live-count { color: var(--text-3); font-weight: 600; min-width: 30px; text-align: left }
+
+/* ---------- Filas con controles anchos (bug «texto en bajada») ----------
+   El campo de Material es w-full: dentro de .orbit-row apretaba el bloque de
+   texto de la fila hasta una letra por línea. Ahora el texto conserva su
+   columna y el control pasa a la línea siguiente con ancho completo. */
+.orbit-row { flex-wrap: wrap; row-gap: 8px }
+.orbit-row > .orbit-row-ctl { flex: 0 1 auto; min-width: 0; max-width: 100% }
+.orbit-row:has([data-slot="text-field"]) > .orbit-row-ctl,
+.orbit-row:has(> .keyfield) > .orbit-row-ctl { flex: 1 1 100%; min-width: 0; max-width: 100% }
+.orbit-row > [data-slot="text-field"], .orbit-row > .keyfield, .orbit-row > input { flex: 1 1 100%; min-width: 0 }
+
 }

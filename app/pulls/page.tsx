@@ -8,6 +8,7 @@ import { AppButton as GlassButton, AppInput as GlassInput, AppSegmented as Glass
 import { useOrbit, pushToast, consumeCreatePR } from '@/lib/store';
 import { gh, GitHubError, type GHPull, type GHCompare } from '@/lib/github';
 import { logAct } from '@/lib/activity';
+import { onLive } from '@/lib/live';
 import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, RepoPicker, BranchPicker, relTime } from '@/components/bits';
 import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { PatchView } from '@/components/diff';
@@ -76,6 +77,7 @@ export default function PullsPage() {
   }, []);
 
   useEffect(() => { if (connected) void load(stateF); /* eslint-disable-line */ }, [connected, stateF]);
+  useEffect(() => onLive(() => { if (connected) void load(stateF); }), [stateF]); // Live: refresco en silencio
 
   /* el chat pide abrir el asistente de creación */
   useEffect(() => {

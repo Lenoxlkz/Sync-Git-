@@ -1,4 +1,4 @@
-# Orbit Next v3.5 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
+# Orbit Next v3.6 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -106,6 +106,28 @@ háptica y título vivo con la cuota.**
   horizontales verificados en móvil.
 - **Campos más claros**: los inputs de token/API usan la variante **outlined** de Material
   (caja completa) en lugar de la de línea inferior, menos confusa.
+
+
+## Novedades v3.6 — actualizador en vivo y ajustes de flujo
+
+- **Actualización EN VIVO restaurada** (portado del HTML original): píldora «EN VIVO /
+  PAUSADO» en la barra con cuenta atrás, botón ⟳ para refrescar al momento y fila en
+  Control para activarla y elegir el intervalo (30 s / 1 min / 2 min / 5 min). Refresca
+  la vista actual sin recargar: repos, PRs, issues, árbol del editor y re-análisis
+  silencioso de la subida. Guardas del original intactas: se pausa si hay un diálogo
+  abierto, estás escribiendo, la pestaña está oculta o la cuota de API baja de 30.
+- **Editor sin auto-entrada**: ya no abre el último repo usado; muestra las tarjetas
+  de repos para elegir cuál revisar o editar (solo el chat puede abrir uno directamente).
+- **Textos «en bajada» corregidos**: en filas con campo de texto (API Key de IA, URL
+  Base, Modelo, mensaje de commit, token) el campo apretaba el texto de la fila hasta
+  una letra por línea. Ahora el texto conserva su línea completa y el campo pasa debajo
+  a ancho completo.
+- **Subida con confirmación y flujo limpio**: «Subir N archivos» abre una hoja de
+  confirmación con el resumen (nuevos/cambiados → repo · rama); tras subir con éxito se
+  vacían el mensaje del commit, la cola de archivos y el repo elegido (el resultado
+  verificado queda a la vista).
+- **Corrección de fondo**: los repos con árbol vacío (p. ej. recién creados) daban 404
+  al listar el árbol; ahora se pela commit→árbol y el vacío se trata como lista vacía.
 
 ## Rendimiento
 

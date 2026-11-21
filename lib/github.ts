@@ -146,6 +146,17 @@ export const gh = {
   ref: (repo: string, branch: string) =>
     req<{ object: { sha: string } }>(`/repos/${repo}/git/ref/heads/${enc(branch)}`),
   tree: (repo: string, sha: string) => req<GHTree>(`/repos/${repo}/git/trees/${sha}?recursive=1`),
+  /* árbol de una rama pelando commit→tree: el árbol vacío (4b825dc…) no es
+     un objeto consultable en la API (404), así que se devuelve vacío —
+     fixes: repos recién creados o con commits sin contenido */
+  treeAt: async (repo: string, branch: string): Promise<GHTree> => {
+    const ref = await gh.ref(repo, branch);
+    const c = await gh.getCommit(repo, ref.object.sha);
+    if (c.tree.sha === '4b825dc642cb6eb9a060e54bf8d69288fbee4904') {
+      return { sha: c.tree.sha, truncated: false, tree: [] };
+    }
+    return gh.tree(repo, c.tree.sha);
+  },
   getCommit: (repo: string, sha: string) =>
     req<{ sha: string; tree: { sha: string }; message: string; html_url?: string }>(`/repos/${repo}/git/commits/${sha}`),
 

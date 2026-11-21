@@ -9,10 +9,11 @@ import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwi
 import { useOrbit, setPrefs, pushToast } from '@/lib/store';
 import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
 import { analyze, commitOrbit, type FileEntry, type Plan, type CommitResult } from '@/lib/upload';
+import { onLive, setLiveBusy } from '@/lib/live';
 import { lineDiff, type DiffResult } from '@/lib/code';
 import { isSecretPath, isBinPath, normPath } from '@/lib/security';
 import { readZip } from '@/lib/zip';
-import { Section, NeedConn, NeedScope, Diag, Spinner, RepoPicker, BranchPicker } from '@/components/bits';
+import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, RepoPicker, BranchPicker } from '@/components/bits';
 import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { SideBySide } from '@/components/diff';
 import { IcUpload, IcFolder, IcFile, IcRefresh, IcCloud, IcCheck, IcWarn, IcExternal, IcTrash, IcCompare } from '@/components/Icons';
@@ -32,6 +33,11 @@ export default function ExplorerPage() {
   const [result, setResult] = useState<CommitResult | null>(null);
   const [err, setErr] = useState('');
   const [over, setOver] = useState(false);
+  useEffect(() => { setLiveBusy(analyzing || committing); }, [analyzing, committing]);
+  /* Live: re-análisis silencioso si hay cola y destino (como el HTML original) */
+  useEffect(() => onLive(() => {
+    if (repo && branch && files.length && plan && !analyzing && !committing) void runAnalyze();
+  }), [repo, branch, files, plan, analyzing, committing]);
   const [includeSecrets, setIncludeSecrets] = useState(false);
   const [secretCount, setSecretCount] = useState(0);
   const [invalidCount, setInvalidCount] = useState(0);
@@ -42,6 +48,7 @@ export default function ExplorerPage() {
   const [pickRepo, setPickRepo] = useState(false);
   const [pickBranch, setPickBranch] = useState(false);
   const [stripRoot, setStripRoot] = useState(true);
+  const [confirmUp, setConfirmUp] = useState(false);
 
   async function openCompare(e: FileEntry & { remoteSha?: string }) {
     setCmpEntry(e); setCmpDiff(null); setCmpOpen(true); setCmpBusy(true);
@@ -149,8 +156,7 @@ export default function ExplorerPage() {
       const br = await gh.branches(repo).catch(() => []);
       let treeEntries: GHTreeEntry[] = [];
       if (br.some(b => b.name === branch)) {
-        const refSha = (await gh.ref(repo, branch)).object.sha;
-        const tree = await gh.tree(repo, refSha);
+        const tree = await gh.treeAt(repo, branch);
         treeEntries = tree.tree;
         if (tree.truncated) pushToast('Árbol enorme truncado por GitHub', 'err', 'La comparación solo cubre parte del repo');
       }
@@ -172,8 +178,12 @@ export default function ExplorerPage() {
         onProgress: (stage, done, total, detail) => setProgress({ stage, done, total, detail }),
       });
       setResult(res);
-      if (res.ok) pushToast('Commit verificado', 'ok', `${res.uploaded} subidos · ${res.skipped} sin cambios · ${res.deleted} borrados`);
-      else pushToast('Commit con observaciones', 'err', res.problems[0]);
+      if (res.ok) {
+        pushToast('Commit verificado', 'ok', `${res.uploaded} subidos · ${res.skipped} sin cambios · ${res.deleted} borrados`);
+        /* flujo limpio: tras subir se vacían mensaje, cola y repo elegido */
+        setMessage(''); setFiles([]); setRepo(''); setBranch(''); setPlan(null);
+        setIncludeSecrets(false); setSecretCount(0); setInvalidCount(0);
+      } else pushToast('Commit con observaciones', 'err', res.problems[0]);
     } catch (e) {
       setErr(e instanceof GitHubError ? e.message : 'error al subir');
     } finally { setCommitting(false); setProgress(null); }
@@ -259,7 +269,7 @@ export default function ExplorerPage() {
         <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcCloud size={15} />} disabled={!files.length || !repo || !branch || analyzing} onClick={runAnalyze}>
           {analyzing ? 'Analizando…' : 'Analizar contra el repo'}
         </GlassButton>
-        <GlassButton variant="filled" tint="#30d158" icon={<IcUpload size={15} />} disabled={!plan || total === 0 || committing} onClick={runCommit}>
+        <GlassButton variant="filled" tint="#30d158" icon={<IcUpload size={15} />} disabled={!plan || total === 0 || committing} onClick={() => setConfirmUp(true)}>
           {committing ? 'Subiendo…' : `Subir ${total} archivo${total === 1 ? '' : 's'}`}
         </GlassButton>
         {analyzing || committing ? <span className="orbit-spinner" /> : null}
@@ -333,6 +343,13 @@ export default function ExplorerPage() {
         </GlassCard>
       ) : null}
 
+      <ConfirmSheet
+        open={confirmUp} onClose={() => setConfirmUp(false)}
+        title="Subir al repositorio"
+        text={`${total} archivo(s): ${plan?.creates.length ?? 0} nuevos y ${plan?.updates.length ?? 0} cambiados → ${repo} · ${branch}. Los idénticos no se vuelven a subir${sync && plan?.deletes.length ? `; ${plan.deletes.length} se borrarán en espejo` : ''}. Verificación ruta por ruta con el SHA final.`}
+        confirmLabel="Subir ahora"
+        onConfirm={runCommit}
+      />
       <RepoPicker open={pickRepo} onClose={() => setPickRepo(false)} onPick={(r) => { setRepo(r); const d = defaultBranch(r); setBranch(d); setPrefs({ lastRepo: r, lastBranch: d }); setPlan(null); }} />
       <BranchPicker open={pickBranch} onClose={() => setPickBranch(false)} repo={repo} onPick={(b) => { setBranch(b); setPrefs({ lastBranch: b }); setPlan(null); }} />
 
