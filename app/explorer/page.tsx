@@ -117,12 +117,39 @@ export default function ExplorerPage() {
     const root = stripRoot ? detectedRoot : null;
     const out: FileEntry[] = [];
     for (const f of files) {
-      const p = root && f.path.startsWith(root) ? f.path.slice(root.length) : f.path;
+      /* la ruta de destino elegida por el usuario manda sobre la detectada;
+         se normaliza SIEMPRE aquí (el campo es libre al teclear y el usuario
+         puede analizar sin salir del campo) */
+      const auto = root && f.path.startsWith(root) ? f.path.slice(root.length) : f.path;
+      const p = f.customPath ? (normPath(f.customPath) || auto) : auto;
       if (!p) continue;
       out.push({ ...f, path: p, secret: isSecretPath(p) });
     }
     return out;
   }, [files, stripRoot, detectedRoot]);
+
+  /* ruta de destino específica por archivo: se escribe sin normalizar (para
+     poder teclear «docs/») y se normaliza al salir del campo; vacío restaura */
+  function setFilePath(detected: string, value: string) {
+    setFiles(prev => prev.map(f => f.path === detected ? { ...f, customPath: value } : f));
+    setPlan(null); setResult(null);
+  }
+  function commitFilePath(detected: string, value: string) {
+    const raw = value.trim();
+    if (!raw) { setFilePath(detected, ''); return; }
+    const p = normPath(raw);
+    if (!p) {
+      pushToast('Ruta de destino inválida', 'err', 'No puede quedar vacía ni contener «..» (subir fuera del repo)');
+      setFilePath(detected, '');
+      return;
+    }
+    setFilePath(detected, p);
+  }
+  function autoPath(f: FileEntry): string {
+    return stripRoot && detectedRoot && f.path.startsWith(detectedRoot) ? f.path.slice(detectedRoot.length) : f.path;
+  }
+  /* rutas finales actuales (para marcar duplicadas en el editor) */
+  const finalPaths = useMemo(() => files.map(f => (f.customPath ? normPath(f.customPath) : autoPath(f))), [files, stripRoot, detectedRoot]);
 
   function addEntries(list: FileEntry[]) {
     const clean: FileEntry[] = [];
@@ -198,6 +225,12 @@ export default function ExplorerPage() {
 
   async function runCommit() {
     if (!plan || !repo || !branch) return;
+    const seen = new Set<string>();
+    for (const e of [...plan.creates, ...plan.updates]) {
+      const k = e.path.toLowerCase();
+      if (seen.has(k)) { setErr('Dos archivos tienen la misma ruta de destino («' + e.path + '»): corrige las rutas antes de subir.'); return; }
+      seen.add(k);
+    }
     setCommitting(true); setErr('');
     const msg = message.trim() || `Orbit: subida delta (${plan.creates.length} nuevos, ${plan.updates.length} actualizados${sync && plan.deletes.length ? ', ' + plan.deletes.length + ' borrados' : ''})`;
     try {
@@ -269,6 +302,33 @@ export default function ExplorerPage() {
           <GlassButton icon={<IcRefresh size={14} />} aria-label="Elegir rama" onClick={() => setPickBranch(true)}>{branch || defaultBranch(repo) || 'rama…'}</GlassButton>
         </div>
       </div>
+      {files.length ? (
+        <div className="orbit-row">
+          <div className="orbit-row-text"><b>Ruta de destino {files.length > 1 ? 'de cada archivo' : 'del archivo'}</b>
+            <small>Carpeta y nombre exactos dentro del repo: para la raíz deja solo el nombre; separa carpetas con «/» (p. ej. «docs/guías/nota.txt»). Vacía el campo para volver a la ruta detectada{stripRoot && detectedRoot ? ' · la carpeta raíz se recorta salvo ruta específica' : ''}</small></div>
+          <div className="orbit-row-ctl" style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
+            {files.slice(0, 150).map(f => {
+              const value = f.customPath ?? autoPath(f);
+              const dup = finalPaths.filter(x => x.toLowerCase() === value.toLowerCase()).length > 1;
+              return (
+                <div key={f.path} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <small className="tiny mono" style={{ color: 'var(--text-3)', overflowWrap: 'break-word' }}>{f.path}</small>
+                  <GlassInput
+                    placeholder="ruta/dentro/del/repo/archivo.ext"
+                    value={value}
+                    onChange={e => setFilePath(f.path, e.target.value)}
+                    onBlur={e => commitFilePath(f.path, e.target.value)}
+                    aria-label={'Ruta de destino de ' + f.path}
+                    style={dup ? { borderColor: 'var(--warn)' } : undefined}
+                  />
+                  {dup ? <span className="chip warn" style={{ alignSelf: 'flex-start' }}>ruta duplicada: otro archivo usa la misma</span> : null}
+                </div>
+              );
+            })}
+            {files.length > 150 ? <small className="tiny">Se muestran las primeras 150 rutas; el resto conservan la detectada.</small> : null}
+          </div>
+        </div>
+      ) : null}
       <div className="orbit-row">
         <div className="orbit-row-text"><b>Sincronizar espejo</b><small>Borra del repo lo que ya no exista en tu carpeta local</small></div>
         <GlassSwitch checked={sync} onChange={setSync} tint="var(--orbit-accent)" aria-label="Sincronizar espejo" />

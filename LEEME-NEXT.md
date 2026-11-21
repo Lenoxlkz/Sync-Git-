@@ -1,4 +1,4 @@
-# Orbit Next v3.7 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
+# Orbit Next v3.8 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -154,6 +154,23 @@ háptica y título vivo con la cuota.**
   capacidades nuevas (paquetes, proyectos, discusiones, enterprise, webhooks,
   claves), relectura automática de scopes en cada respuesta y botón «Revalidar
   ahora» en Control.
+
+
+## Novedades v3.8 — ruta de destino específica por archivo
+
+- **«Ruta de destino del archivo» en la sección Destino** (Explorer): cada archivo
+  en cola muestra un campo editable con la carpeta y el nombre exactos con los
+  que se subirá dentro del repo. Sirve sobre todo para enviar un archivo
+  individual a una ubicación concreta: carpetas anidadas («docs/guías/nota.txt»)
+  o la raíz del repo (deja solo el nombre, fuera de carpetas).
+- La ruta específica tiene prioridad sobre la detectada y sobre el recorte de
+  carpeta raíz; vaciar el campo restaura la ruta detectada automáticamente.
+- Normalización al salir del campo (barras sanas, sin «..» ni rutas absolutas)
+  y aviso visual cuando dos archivos quedan con la misma ruta de destino; el
+  commit se detiene con un error claro si eso ocurre (antes GitHub fallaría).
+- Verificado end to end con un repo real: archivo enviado a «docs/sub/…» y a la
+  raíz, tanto en repos con historial como en uno vacío (primer commit con la
+  Contents API respeta la ruta elegida, creando las carpetas).
 
 ## Rendimiento
 

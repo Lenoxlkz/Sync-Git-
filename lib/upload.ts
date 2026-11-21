@@ -19,7 +19,7 @@ async function treeOfCommit(repo: string, commitSha: string): Promise<GHTree> {
 }
 interface GHTree { sha: string; truncated?: boolean; tree: GHTreeEntry[] }
 
-export interface FileEntry { path: string; file: File; secret?: boolean }
+export interface FileEntry { path: string; file: File; secret?: boolean; customPath?: string }
 export interface Plan {
   creates: FileEntry[]; updates: Array<FileEntry & { remoteSha?: string }>; skips: FileEntry[];
   deletes: string[]; dups: string[]; tooBig: FileEntry[];
