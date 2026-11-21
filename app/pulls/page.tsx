@@ -51,9 +51,24 @@ export default function PullsPage() {
     setLoading(true); setErr('');
     try {
       const base = s === 3 ? 'all' : STATES[Math.min(s, 2)];
-      let list = await gh.pullsAll(base);
+      /* No existe un endpoint global de PRs en la API de GitHub: se recorren
+         los repos del usuario (como hace la pestaña Issues con /issues) y se
+         ordena todo junto por actividad. Tandas de 4 para no saturar la API. */
+      const rs = await gh.repos();
+      const parts: GHPull[][] = [];
+      let failed = 0;
+      for (let i = 0; i < rs.length; i += 4) {
+        await Promise.all(rs.slice(i, i + 4).map(async r => {
+          try { parts.push(await gh.pulls(r.full_name, base)); } catch { failed++; /* repo vacío o sin acceso: se salta */ }
+        }));
+      }
+      let list = parts.flat();
+      if (!list.length && failed && failed === rs.length && rs.length) {
+        throw new GitHubError('No se pudieron leer los pull requests de ningún repo', 0);
+      }
       if (s === 1) list = list.filter(p => p.merged);
       if (s === 2) list = list.filter(p => !p.merged);
+      list.sort((a, b) => ((b.updated_at || b.created_at) as string).localeCompare((a.updated_at || a.created_at) as string));
       setPulls(list);
     } catch (e) {
       setErr(e instanceof GitHubError ? e.message : 'error');

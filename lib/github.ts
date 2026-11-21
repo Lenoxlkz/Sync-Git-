@@ -24,7 +24,7 @@ export interface GHTreeEntry { path: string; mode: string; type: 'blob' | 'tree'
 export interface GHTree { sha: string; truncated?: boolean; tree: GHTreeEntry[] }
 export interface GHPull {
   number: number; title: string; user: { login: string }; state: string;
-  body?: string | null; html_url: string; created_at: string; draft?: boolean;
+  body?: string | null; html_url: string; created_at: string; updated_at?: string; draft?: boolean;
   head: { ref: string; sha: string }; base: { ref: string; repo: { full_name: string } }; merged?: boolean; comments?: number;
 }
 export interface GHIssue {
@@ -164,7 +164,8 @@ export const gh = {
     req<GHRepo>('/user/repos', { method: 'POST', body: { name, description, private: isPrivate, auto_init: false } }),
   deleteRepo: (repo: string) => req<null>(`/repos/${repo}`, { method: 'DELETE' }),
 
-  pulls: (repo: string, state: string) => req<GHPull[]>(`/repos/${repo}/pulls?state=${state}&per_page=50`),
+  pulls: (repo: string, state: string) =>
+    req<GHPull[]>(`/repos/${repo}/pulls?state=${state}&per_page=50&sort=updated&direction=desc`),
   prDetail: (repo: string, num: number) => req<GHPull>(`/repos/${repo}/pulls/${num}`),
   issueComments: (repo: string, num: number) => req<GHComment[]>(`/repos/${repo}/issues/${num}/comments?per_page=100`),
   addComment: (repo: string, num: number, body: string) =>
@@ -206,7 +207,8 @@ export const gh = {
   branchDelete: (repo: string, branch: string) =>
     req<null>(`/repos/${repo}/git/refs/heads/${enc(branch)}`, { method: 'DELETE' }),
 
-  pullsAll: (state: string) => req<GHPull[]>(`/pulls?state=${state}&per_page=50&sort=updated`),
+  /* «pullsAll» se retiró: la API de GitHub no tiene /pulls global (devolvía 404
+     — por eso la sección de PRs fallaba). La página itera gh.repos() + gh.pulls(). */
   pullCreate: (repo: string, body: { title: string; body?: string; head: string; base: string }) =>
     req<GHPull>(`/repos/${repo}/pulls`, { method: 'POST', body }),
   pullReview: (repo: string, num: number, event: string, bodyText: string) =>

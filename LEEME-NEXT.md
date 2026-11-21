@@ -1,4 +1,4 @@
-# Orbit Next v3.4 — Next.js + Liquid Glass
+# Orbit Next v3.5 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -84,6 +84,28 @@ háptica y título vivo con la cuota.**
 - **Tailwind CSS v4 sin preflight** (`theme + utilities` por capas) para no alterar el CSS propio de
   Orbit; el puente `@theme inline` + utilities del registry Expressive vive en `app/expressive.css`
   junto al tema generado (`.dark`, springs fluid, prefers-reduced-motion → sin motion).
+
+
+## Novedades v3.5 — correcciones de uso
+
+- **Pull Requests funcionan de nuevo**: la sección fallaba porque la API de GitHub no
+  tiene un endpoint global `/pulls` (devolvía 404 → «Failed to fetch»). Ahora se recorren
+  tus repos con `gh.pulls()` en tandas de 4 y se ordena todo por actividad; cada fila
+  muestra su repositorio, rama y autor, igual que la pestaña de Issues. El chat («mis PRs»)
+  usa el mismo método.
+- **Explorer · subida**: se restauró la **eliminación automática de la carpeta raíz**
+  (ZIP de GitHub `repo-main/`, carpeta arrastrada…) con fila «Quitar carpeta raíz» en
+  Control del formulario: detecta la raíz común, la quita y te lo muestra. El plan se
+  ordena **en árbol** (por carpetas, como GitHub) y las rutas envuelven línea a línea
+  (antes nowrap + elipsis).
+- **Material 3 Expressive legible**: el CSS legacy de Orbit (`button { color: inherit }`,
+  sin capa) pisaba las utilidades de Material. Ahora vive en `@layer app` (por debajo de
+  las utilidades de Tailwind) — botones rellenos/tonales/destructivos miden **6.0–6.1:1**
+  de contraste en claro y oscuro (antes «casi ilegibles»), incluida la bóveda y datos locales.
+- **Modales moderados**: hoja Expressive a 520px máx. (antes 560) y sin desbordes
+  horizontales verificados en móvil.
+- **Campos más claros**: los inputs de token/API usan la variante **outlined** de Material
+  (caja completa) en lugar de la de línea inferior, menos confusa.
 
 ## Rendimiento
 

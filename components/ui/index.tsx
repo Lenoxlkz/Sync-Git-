@@ -114,7 +114,7 @@ export function AppInput({ type = 'text', placeholder, value, onChange, onBlur, 
   return (
     <ExTextField
       label={label || ariaLabel || placeholder || 'Campo'}
-      variant="filled"
+      variant="outlined"
       leadingIcon={icon}
       type={type} placeholder={placeholder} value={value} onChange={onChange} onBlur={onBlur}
       onKeyDown={onKeyDown} onFocus={onFocus} disabled={disabled}

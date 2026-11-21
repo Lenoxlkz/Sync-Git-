@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { AppButton as GlassButton, AppInput as GlassInput } from '@/components/ui';
 import { useOrbit, pushToast, setPrefs, loadRepos, openFicha, openCode, requestCreatePR, setChatPrefill } from '@/lib/store';
 import { aiChat, provOf, type AIProvider, type ChatMsg } from '@/lib/ai';
-import { gh, createBranch, GitHubError, type GHRepo } from '@/lib/github';
+import { gh, createBranch, GitHubError, type GHRepo, type GHPull } from '@/lib/github';
 import { logAct } from '@/lib/activity';
 import { Md } from '@/lib/md';
 import { Section, ConfirmSheet } from '@/components/bits';
@@ -202,7 +202,15 @@ export default function ChatPage() {
         return { text: 'Abro el asistente de **creación de PR**: eliges repositorio, base y comparación, y se confirma antes de publicar.' };
       }
       if (!connected) return needConn();
-      const prs = await gh.pullsAll('open');
+      /* sin endpoint global de PRs en la API: se recorren los repos del usuario */
+      const rs = await gh.repos();
+      const prParts: GHPull[][] = [];
+      for (let i = 0; i < rs.length; i += 4) {
+        await Promise.all(rs.slice(i, i + 4).map(async r => {
+          try { prParts.push(await gh.pulls(r.full_name, 'open')); } catch { /* repo vacío */ }
+        }));
+      }
+      const prs = prParts.flat().sort((a, b) => ((b.updated_at || b.created_at) as string).localeCompare((a.updated_at || a.created_at) as string));
       logAct('pr', 'PRs consultados');
       return {
         text: `Pull requests abiertos (${prs.length}):`,

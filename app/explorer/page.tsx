@@ -4,7 +4,7 @@
    una rama; Orbit compara por SHA-1 Git, sube solo lo que cambia y verifica
    leyendo el árbol final. Con sincronización espejo opcional. */
 
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwitch, AppCard as GlassCard, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, setPrefs, pushToast } from '@/lib/store';
 import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
@@ -41,6 +41,7 @@ export default function ExplorerPage() {
   const [cmpBusy, setCmpBusy] = useState(false);
   const [pickRepo, setPickRepo] = useState(false);
   const [pickBranch, setPickBranch] = useState(false);
+  const [stripRoot, setStripRoot] = useState(true);
 
   async function openCompare(e: FileEntry & { remoteSha?: string }) {
     setCmpEntry(e); setCmpDiff(null); setCmpOpen(true); setCmpBusy(true);
@@ -69,6 +70,30 @@ export default function ExplorerPage() {
   function defaultBranch(r: string): string {
     return repos.find(x => x.full_name === r)?.default_branch || 'main';
   }
+
+  /* Carpeta superior compartida por TODAS las rutas (p. ej. «repo-main/» en los
+     ZIP de GitHub o la carpeta elegida). Si existe, se quita para que los
+     archivos caigan en la raíz del repo, como GitHub los ordena. */
+  function commonRoot(paths: string[]): string | null {
+    if (!paths.length) return null;
+    const tops = paths.map(p => p.split('/')[0]);
+    if (tops.some(t => t !== tops[0])) return null;
+    if (paths.every(p => !p.includes('/'))) return null;
+    return tops[0] + '/';
+  }
+  const detectedRoot = useMemo(() => commonRoot(files.map(f => f.path)), [files]);
+  /* rutas efectivas: con o sin la carpeta raíz; el estado de secreto se
+     recalcula sobre la ruta final (la que se sube) */
+  const effEntries = useMemo(() => {
+    const root = stripRoot ? detectedRoot : null;
+    const out: FileEntry[] = [];
+    for (const f of files) {
+      const p = root && f.path.startsWith(root) ? f.path.slice(root.length) : f.path;
+      if (!p) continue;
+      out.push({ ...f, path: p, secret: isSecretPath(p) });
+    }
+    return out;
+  }, [files, stripRoot, detectedRoot]);
 
   function addEntries(list: FileEntry[]) {
     const clean: FileEntry[] = [];
@@ -115,7 +140,7 @@ export default function ExplorerPage() {
 
   async function runAnalyze() {
     if (!files.length || !repo || !branch) return;
-    const eff = files.filter(f => !f.secret || includeSecrets);
+    const eff = effEntries.filter(f => !f.secret || includeSecrets);
     const hidden = files.length - eff.length;
     if (hidden) pushToast(hidden + ' secreto(s) excluidos del análisis', 'info', 'Activa «Incluir secretos» para mandarlos también');
     if (!eff.length) { setErr('Nada que analizar: todos los archivos están excluidos.'); return; }
@@ -162,7 +187,8 @@ export default function ExplorerPage() {
   );
 
   const total = plan ? plan.creates.length + plan.updates.length : 0;
-  const rows = plan ? [...plan.creates.map(e => ({ e, kind: 'nuevo' })), ...plan.updates.map(e => ({ e, kind: 'cambiado' })), ...plan.skips.slice(0, 60).map(e => ({ e, kind: 'igual' }))] : [];
+  /* orden de árbol: agrupado por carpeta y alfabético, como lista GitHub */
+  const rows = plan ? [...plan.creates.map(e => ({ e, kind: 'nuevo' })), ...plan.updates.map(e => ({ e, kind: 'cambiado' })), ...plan.skips.slice(0, 60).map(e => ({ e, kind: 'igual' }))].sort((a, b) => a.e.path.localeCompare(b.e.path, 'es', { numeric: true })) : [];
   return (
     <Section
       title="Explorer · subida delta"
@@ -208,6 +234,12 @@ export default function ExplorerPage() {
       <div className="orbit-row">
         <div className="orbit-row-text"><b>Sincronizar espejo</b><small>Borra del repo lo que ya no exista en tu carpeta local</small></div>
         <GlassSwitch checked={sync} onChange={setSync} tint="var(--orbit-accent)" aria-label="Sincronizar espejo" />
+      </div>
+      <div className="orbit-row">
+        <div className="orbit-row-text"><b>Quitar carpeta raíz</b><small>{detectedRoot
+          ? `Detectada «${detectedRoot}»: las rutas se recortan para quedar en la raíz del repo, en orden de árbol como en GitHub`
+          : 'Sin carpeta común: las rutas se suben tal cual'}</small></div>
+        <GlassSwitch checked={stripRoot} onChange={v => { setStripRoot(v); setPlan(null); setResult(null); }} tint="var(--orbit-accent)" aria-label="Quitar carpeta raíz" />
       </div>
       {secretCount ? (
         <div className="orbit-row">
@@ -257,7 +289,7 @@ export default function ExplorerPage() {
                   <tbody>
                     {rows.slice(0, 150).map(({ e, kind }) => (
                       <tr key={e.path}>
-                        <td className="mono" style={{ maxWidth: 320, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <td className="mono plan-path">
                           {e.path}{(e as FileEntry).secret ? <span className="chip warn" style={{ marginLeft: 6 }}>secreto</span> : null}
                         </td>
                         <td><span className={`chip ${kind === 'nuevo' ? 'ok' : kind === 'cambiado' ? 'warn' : ''}`}>{kind}</span></td>

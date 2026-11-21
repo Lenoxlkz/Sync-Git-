@@ -1,6 +1,11 @@
+/* Orden de capas: el CSS legacy de Orbit (app) pierde ante las utilidades
+   de Tailwind/Material (utilities); sin esto, button{color:inherit} sin capa
+   pisaba los colores de texto de los componentes Expressive. */
+@layer app, theme, utilities;
 /* Tema de bajo consumo (Material 3 Expressive): puente Tailwind v4
    sin preflight + tema generado (seed #0a84ff, scheme fluid, engine motion). */
 @import './expressive.css';
+@layer app {
 
 /* ================================================================
    GitHub Orbit Next — sistema de diseño (tokens + chrome)
@@ -224,6 +229,7 @@ a { color: inherit; text-decoration: none }
 .plan-table { width: 100%; border-collapse: collapse; font-size: 12.5px }
 .plan-table th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3); padding: 7px 10px; border-bottom: 1px solid var(--border) }
 .plan-table td { padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: middle }
+.plan-table td.plan-path { overflow-wrap: anywhere; white-space: normal; word-break: break-word; min-width: 160px }
 .plan-table tr:last-child td { border-bottom: none }
 .table-wrap { overflow-x: auto; border-radius: 14px }
 
@@ -636,7 +642,7 @@ html[data-engine="expressive"] body {
 
 /* Hoja de Expressive (AppSheet): centrada, con tope de alto y scroll interno */
 .exp-sheet {
-  width: min(560px, 100%);
+  width: min(520px, 100%);
   max-height: min(80dvh, 720px);
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -688,4 +694,5 @@ html[data-engine="expressive"] body {
 html[data-engine="expressive"][data-amoled] {
   --ex-color-surface: #000;
   --ex-color-background: #000;
+}
 }
