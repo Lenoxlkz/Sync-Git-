@@ -34,6 +34,8 @@ export interface Prefs {
   rememberDevice: boolean;
   live: boolean;
   liveInt: number;
+  confirmRepoSwitch: boolean;
+  forceUpload: boolean;
   lastRepo: string;
   lastBranch: string;
 }
@@ -46,6 +48,7 @@ const DEFAULT_PREFS: Prefs = {
   aiProvider: 'openai', aiKey: '', aiModel: '', aiBaseUrl: '', aiGatewayKey: '',
   remember: false, rememberDevice: false, lastRepo: '', lastBranch: '',
   live: false, liveInt: 60,
+  confirmRepoSwitch: true, forceUpload: false,
 };
 
 export interface Toast { id: number; msg: string; type: 'ok' | 'err' | 'info'; sub?: string }
@@ -91,7 +94,13 @@ function patch(p: Partial<AppState>) { state = { ...state, ...p }; emit(); }
 let lastScopes: string[] | null = null;
 if (typeof window !== 'undefined') {
   onRate((limit, rem) => { state = { ...state, rate: { limit, rem } }; subs.forEach(f => f()); });
-  onScopes(s => { lastScopes = s; });
+  /* revalidación en vivo: cada respuesta de GitHub redeclara los scopes; si
+     cambian (token editado, fine-grained), el estado se actualiza al momento */
+  onScopes(s => {
+    const changed = JSON.stringify(lastScopes) !== JSON.stringify(s);
+    lastScopes = s;
+    if (changed) { state = { ...state, scopes: s }; subs.forEach(f => f()); }
+  });
 }
 
 let toastSeq = 0;
@@ -176,6 +185,12 @@ export function applyAppearance(p: Prefs) {
   html.style.setProperty('--orbit-accent', p.accent);
   if (p.reduceMotion) html.dataset.motion = 'reduce';
   else delete html.dataset.motion;
+}
+
+/* Revalida los scopes del token: una petición a /user devuelve X-OAuth-Scopes
+   fresco y el oyente global actualiza el estado (útil tras editar el token). */
+export async function revalidateScopes(): Promise<void> {
+  await gh.user();
 }
 
 export function setPrefs(p: Partial<Prefs>) {

@@ -574,7 +574,7 @@ html[data-amoled="1"] #aurora { display: none }
 }
 
 /* ---------- campos de clave (mostrar/ocultar; la guardada nunca se muestra) ---------- */
-.orbit-row-text small { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere }
+.orbit-row-text small { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word }
 .keyfield { display: flex; align-items: center; gap: 8px; width: 100%; justify-content: flex-end }
 .keyfield > :first-child { flex: 1; min-width: 0 }
 .keyfield .chip { flex: none }
@@ -713,6 +713,7 @@ html[data-engine="expressive"][data-amoled] {
    texto de la fila hasta una letra por línea. Ahora el texto conserva su
    columna y el control pasa a la línea siguiente con ancho completo. */
 .orbit-row { flex-wrap: wrap; row-gap: 8px }
+.orbit-row > .orbit-row-text { flex: 1 1 auto; min-width: min(210px, 100%) }
 .orbit-row > .orbit-row-ctl { flex: 0 1 auto; min-width: 0; max-width: 100% }
 .orbit-row:has([data-slot="text-field"]) > .orbit-row-ctl,
 .orbit-row:has(> .keyfield) > .orbit-row-ctl { flex: 1 1 100%; min-width: 0; max-width: 100% }

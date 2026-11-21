@@ -6,7 +6,7 @@
 
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwitch, AppCard as GlassCard, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
-import { useOrbit, setPrefs, pushToast } from '@/lib/store';
+import { useOrbit, setPrefs, pushToast, revalidateScopes } from '@/lib/store';
 import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
 import { analyze, commitOrbit, type FileEntry, type Plan, type CommitResult } from '@/lib/upload';
 import { onLive, setLiveBusy } from '@/lib/live';
@@ -49,6 +49,9 @@ export default function ExplorerPage() {
   const [pickBranch, setPickBranch] = useState(false);
   const [stripRoot, setStripRoot] = useState(true);
   const [confirmUp, setConfirmUp] = useState(false);
+  const [pendingRepo, setPendingRepo] = useState('');
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
+  const [emptyRepo, setEmptyRepo] = useState(false);
 
   async function openCompare(e: FileEntry & { remoteSha?: string }) {
     setCmpEntry(e); setCmpDiff(null); setCmpOpen(true); setCmpBusy(true);
@@ -68,14 +71,33 @@ export default function ExplorerPage() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setRepo(prefs.lastRepo);
-    setBranch(prefs.lastBranch);
+    /* sin repo preseleccionado: el destino se elige explícitamente para cada
+       subida — evita enviar archivos al repo equivocado */
     if (dirRef.current) dirRef.current.setAttribute('webkitdirectory', '');
     if (dirRef.current) dirRef.current.setAttribute('directory', '');
-  }, [prefs.lastRepo, prefs.lastBranch]);
+  }, []);
 
   function defaultBranch(r: string): string {
     return repos.find(x => x.full_name === r)?.default_branch || 'main';
+  }
+
+  /* destino de subida: cambio explícito y — si hay cola — con confirmación
+     activable/desactivable; al cambiar se recalculan raíz y plan */
+  function applyRepo(r: string) {
+    setRepo(r);
+    const d = defaultBranch(r);
+    setBranch(d);
+    setPlan(null); setErr(''); setResult(null); setEmptyRepo(false);
+    setPrefs({ lastRepo: r, lastBranch: d });
+    setConfirmSwitch(false); setPendingRepo('');
+    pushToast('Destino: ' + r, 'ok', 'Rama ' + d + ' · vuelve a analizar para el plan de subida');
+  }
+  function chooseRepo(r: string) {
+    if (files.length && prefs.confirmRepoSwitch && repo && r !== repo) {
+      setPendingRepo(r); setPickRepo(false); setConfirmSwitch(true);
+      return;
+    }
+    applyRepo(r);
   }
 
   /* Carpeta superior compartida por TODAS las rutas (p. ej. «repo-main/» en los
@@ -128,15 +150,19 @@ export default function ExplorerPage() {
 
   async function onPickFiles(fl: FileList | null) {
     if (!fl?.length) return;
+    /* copia primero: el FileList es VIVO y limpiar el input lo vacía; el
+       reset del value permite re-seleccionar el mismo archivo otra vez */
+    const all: File[] = Array.from(fl);
+    [dirRef.current, fileRef.current, zipRef.current].forEach(i => { if (i) i.value = ''; });
     setErr('');
-    if (fl.length === 1 && fl[0].name.toLowerCase().endsWith('.zip')) {
+    if (all.length === 1 && all[0].name.toLowerCase().endsWith('.zip')) {
       try {
-        const entries = await readZip(fl[0]);
+        const entries = await readZip(all[0]);
         addEntries(entries);
       } catch (e) { setErr(e instanceof Error ? e.message : 'ZIP ilegible'); }
       return;
     }
-    addEntries([...fl].map(f => ({ path: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name, file: f })));
+    addEntries(all.map(f => ({ path: (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name, file: f })));
   }
 
   function onDrop(e: DragEvent<HTMLDivElement>) {
@@ -160,9 +186,11 @@ export default function ExplorerPage() {
         treeEntries = tree.tree;
         if (tree.truncated) pushToast('Árbol enorme truncado por GitHub', 'err', 'La comparación solo cubre parte del repo');
       }
-      const p = await analyze(eff, treeEntries, sync, (done, total) => setProgress({ stage: 'análisis', done, total }));
+      setEmptyRepo(!br.length);
+      const p = await analyze(eff, treeEntries, sync, (done, total) => setProgress({ stage: 'análisis', done, total }), prefs.forceUpload);
       setPlan(p);
-      pushToast('Análisis listo', 'ok', `${p.creates.length} nuevos · ${p.updates.length} cambiados · ${p.skips.length} idénticos`);
+      if (!br.length) pushToast('Repositorio vacío', 'ok', 'Se creará el primer commit y la rama ' + branch + ' con tus archivos');
+      pushToast('Análisis listo', 'ok', `${p.creates.length} nuevos · ${p.updates.length} cambiados · ${p.skips.length} idénticos${prefs.forceUpload ? ' · forzado' : ''}`);
     } catch (e) {
       setErr(e instanceof GitHubError ? e.message : 'error al analizar');
     } finally { setAnalyzing(false); setProgress(null); }
@@ -244,6 +272,14 @@ export default function ExplorerPage() {
       <div className="orbit-row">
         <div className="orbit-row-text"><b>Sincronizar espejo</b><small>Borra del repo lo que ya no exista en tu carpeta local</small></div>
         <GlassSwitch checked={sync} onChange={setSync} tint="var(--orbit-accent)" aria-label="Sincronizar espejo" />
+      </div>
+      <div className="orbit-row">
+        <div className="orbit-row-text"><b>Subida forzada</b><small>Sobrescribe también los archivos idénticos (misma ruta y mismo SHA). Ideal para repos vacíos o nuevos y para reaplicar el contenido completo</small></div>
+        <GlassSwitch checked={prefs.forceUpload} onChange={v => { setPrefs({ forceUpload: v }); setPlan(null); }} tint="var(--warn)" aria-label="Subida forzada" />
+      </div>
+      <div className="orbit-row">
+        <div className="orbit-row-text"><b>Confirmar cambio de repo</b><small>Si hay archivos en cola, pide confirmación antes de cambiar el destino de subida</small></div>
+        <GlassSwitch checked={prefs.confirmRepoSwitch} onChange={v => setPrefs({ confirmRepoSwitch: v })} tint="var(--orbit-accent)" aria-label="Confirmar cambio de repositorio" />
       </div>
       <div className="orbit-row">
         <div className="orbit-row-text"><b>Quitar carpeta raíz</b><small>{detectedRoot
@@ -346,11 +382,18 @@ export default function ExplorerPage() {
       <ConfirmSheet
         open={confirmUp} onClose={() => setConfirmUp(false)}
         title="Subir al repositorio"
-        text={`${total} archivo(s): ${plan?.creates.length ?? 0} nuevos y ${plan?.updates.length ?? 0} cambiados → ${repo} · ${branch}. Los idénticos no se vuelven a subir${sync && plan?.deletes.length ? `; ${plan.deletes.length} se borrarán en espejo` : ''}. Verificación ruta por ruta con el SHA final.`}
+        text={`${total} archivo(s): ${plan?.creates.length ?? 0} nuevos y ${plan?.updates.length ?? 0} cambiados → ${repo} · ${branch}${emptyRepo ? '. El repo está vacío: se creará el primer commit y la rama' : ''}${prefs.forceUpload ? '. Subida forzada: los idénticos también se sobrescriben' : ''}${sync && plan?.deletes.length ? `; ${plan.deletes.length} se borrarán en espejo` : ''}. Verificación ruta por ruta con el SHA final.`}
         confirmLabel="Subir ahora"
         onConfirm={runCommit}
       />
-      <RepoPicker open={pickRepo} onClose={() => setPickRepo(false)} onPick={(r) => { setRepo(r); const d = defaultBranch(r); setBranch(d); setPrefs({ lastRepo: r, lastBranch: d }); setPlan(null); }} />
+      <RepoPicker open={pickRepo} onClose={() => setPickRepo(false)} onPick={chooseRepo} />
+      <ConfirmSheet
+        open={confirmSwitch} onClose={() => { setConfirmSwitch(false); setPendingRepo(''); }}
+        title="Cambiar de repositorio"
+        text={`Tienes ${files.length} archivo(s) en cola${repo ? ` con destino ${repo}` : ''}. Si cambias a ${pendingRepo} se recalcula la carpeta raíz y el plan; los archivos se quedan en la cola y nada se sube al repo anterior.`}
+        confirmLabel="Cambiar destino"
+        onConfirm={() => applyRepo(pendingRepo)}
+      />
       <BranchPicker open={pickBranch} onClose={() => setPickBranch(false)} repo={repo} onPick={(b) => { setBranch(b); setPrefs({ lastBranch: b }); setPlan(null); }} />
 
       {/* Comparación lado a lado: tu versión vs la del repo */}

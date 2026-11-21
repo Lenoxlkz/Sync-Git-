@@ -150,12 +150,20 @@ export const gh = {
      un objeto consultable en la API (404), así que se devuelve vacío —
      fixes: repos recién creados o con commits sin contenido */
   treeAt: async (repo: string, branch: string): Promise<GHTree> => {
-    const ref = await gh.ref(repo, branch);
-    const c = await gh.getCommit(repo, ref.object.sha);
-    if (c.tree.sha === '4b825dc642cb6eb9a060e54bf8d69288fbee4904') {
-      return { sha: c.tree.sha, truncated: false, tree: [] };
+    /* repo vacío: la ref responde 404 o 409 «Git Repository is empty.» */
+    try {
+      const ref = await gh.ref(repo, branch);
+      const c = await gh.getCommit(repo, ref.object.sha);
+      if (c.tree.sha === '4b825dc642cb6eb9a060e54bf8d69288fbee4904') {
+        return { sha: c.tree.sha, truncated: false, tree: [] };
+      }
+      return gh.tree(repo, c.tree.sha);
+    } catch (e) {
+      if (e instanceof GitHubError && (e.status === 404 || e.status === 409)) {
+        return { sha: '4b825dc642cb6eb9a060e54bf8d69288fbee4904', truncated: false, tree: [] };
+      }
+      throw e;
     }
-    return gh.tree(repo, c.tree.sha);
   },
   getCommit: (repo: string, sha: string) =>
     req<{ sha: string; tree: { sha: string }; message: string; html_url?: string }>(`/repos/${repo}/git/commits/${sha}`),
@@ -170,6 +178,13 @@ export const gh = {
     req<{ object: { sha: string } }>(`/repos/${repo}/git/refs/heads/${enc(branch)}`, { method: 'PATCH', body: { sha, force: false } }),
   refCreate: (repo: string, branch: string, sha: string) =>
     req<{ ref: string }>(`/repos/${repo}/git/refs`, { method: 'POST', body: { ref: `refs/heads/${branch}`, sha } }),
+  /* Fallback de inicialización: Contents API por archivo (crea un commit por
+     archivo; el primero también inicializa el repo vacío). */
+  putContents: (repo: string, branch: string, path: string, message: string, contentB64: string) =>
+    req<{ commit: { sha: string; html_url: string } }>(
+      `/repos/${repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`,
+      { method: 'PUT', body: { message, content: contentB64, branch } },
+    ),
 
   createRepo: (name: string, description: string, isPrivate: boolean) =>
     req<GHRepo>('/user/repos', { method: 'POST', body: { name, description, private: isPrivate, auto_init: false } }),

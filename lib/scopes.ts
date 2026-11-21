@@ -6,7 +6,8 @@
 
 export type Cap =
   | 'repos' | 'code' | 'upload' | 'pulls' | 'issues'
-  | 'workflow' | 'deleteRepo' | 'org' | 'notifications' | 'gists' | 'profile';
+  | 'workflow' | 'deleteRepo' | 'org' | 'notifications' | 'gists' | 'profile'
+  | 'packages' | 'projects' | 'discussions' | 'enterprise' | 'hooks' | 'keys';
 
 export interface CapInfo {
   cap: Cap;
@@ -95,6 +96,48 @@ export const CAPS: CapInfo[] = [
     features: ['Identidad en la topbar', 'Saludo personalizado'],
     missingNote: 'No se muestra tu identidad de GitHub.',
   },
+  {
+    cap: 'packages', title: 'Paquetes (GitHub Packages)',
+    plain: 'Publicar y leer paquetes de la cuenta; delete_packages también los borra.',
+    scopes: 'write:packages / read:packages · delete_packages',
+    features: ['Publicar paquetes', 'Leer versiones'],
+    missingNote: 'Sin paquetes: Orbit no gestiona releases de paquetes.',
+  },
+  {
+    cap: 'projects', title: 'Proyectos (tableros)',
+    plain: 'Ver y editar tableros de proyecto de usuario y organización.',
+    scopes: 'project / read:project / write:project',
+    features: ['Ver tableros', 'Editar tarjetas'],
+    missingNote: 'Sin acceso a los tableros de proyecto.',
+  },
+  {
+    cap: 'discussions', title: 'Discusiones',
+    plain: 'Leer y participar en discusiones de la comunidad.',
+    scopes: 'write:discussion / read:discussion',
+    features: ['Leer discusiones', 'Responder'],
+    missingNote: 'Sin acceso a las discusiones.',
+  },
+  {
+    cap: 'enterprise', title: 'Enterprise',
+    plain: 'Administración de la cuenta enterprise (auditoría, política).',
+    scopes: 'admin:enterprise / read:enterprise',
+    features: ['Auditoría enterprise'],
+    missingNote: 'Sin acceso a ajustes enterprise.',
+  },
+  {
+    cap: 'hooks', title: 'Webhooks de repositorio',
+    plain: 'Crear y administrar webhooks de tus repositorios.',
+    scopes: 'admin:repo_hook / write:repo_hook / read:repo_hook',
+    features: ['Administrar webhooks'],
+    missingNote: 'Sin gestión de webhooks.',
+  },
+  {
+    cap: 'keys', title: 'Claves y firmas',
+    plain: 'Claves SSH y GPG, claves de despliegue y firmas de commits.',
+    scopes: 'admin:public_key · deploy_key · admin:gpg_key · admin:ssh_signing',
+    features: ['Claves SSH/GPG', 'Deploy keys'],
+    missingNote: 'Sin gestión de claves.',
+  },
 ];
 
 export interface Caps {
@@ -103,8 +146,22 @@ export interface Caps {
   map: Record<Cap, boolean>;
 }
 
+/* Jerarquía de scopes clásicos: admin:X ⊃ write:X ⊃ read:X — un scope alto
+   habilita todo lo que implica el bajo (GitHub lo concede así de facto). */
+function expand(set: Set<string>): Set<string> {
+  const out = new Set(set);
+  for (const raw of set) {
+    const m = raw.match(/^(admin|write):(.+)$/);
+    if (m) {
+      if (m[1] === 'admin') { out.add('write:' + m[2]); out.add('read:' + m[2]); }
+      if (m[1] === 'write') out.add('read:' + m[2]);
+    }
+  }
+  return out;
+}
+
 export function capsFromScopes(scopes: string[]): Caps {
-  const s = new Set((scopes || []).map(x => x.trim().toLowerCase()).filter(Boolean));
+  const s = expand(new Set((scopes || []).map(x => x.trim().toLowerCase()).filter(Boolean)));
   const fineGrained = s.size === 0;
   const has = (...any: string[]) => any.some(x => s.has(x));
   const repoRW = has('repo', 'public_repo');
@@ -125,6 +182,12 @@ export function capsFromScopes(scopes: string[]): Caps {
       notifications: fineGrained ? false : has('notifications'),
       gists: fineGrained ? false : has('gist'),
       profile: fineGrained ? true : has('user', 'read:user'),
+      packages: maybe(has('write:packages', 'read:packages', 'delete_packages')),
+      projects: maybe(has('project', 'read:project', 'write:project')),
+      discussions: maybe(has('write:discussion', 'read:discussion')),
+      enterprise: fineGrained ? false : has('admin:enterprise', 'read:enterprise', 'write:enterprise'),
+      hooks: maybe(has('admin:repo_hook', 'write:repo_hook', 'read:repo_hook')),
+      keys: maybe(has('admin:public_key', 'deploy_key', 'admin:gpg_key', 'admin:ssh_signing')),
     },
   };
 }

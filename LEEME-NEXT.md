@@ -1,4 +1,4 @@
-# Orbit Next v3.6 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
+# Orbit Next v3.7 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -128,6 +128,32 @@ háptica y título vivo con la cuota.**
   verificado queda a la vista).
 - **Corrección de fondo**: los repos con árbol vacío (p. ej. recién creados) daban 404
   al listar el árbol; ahora se pela commit→árbol y el vacío se trata como lista vacía.
+
+
+## Novedades v3.7 — subida a repos vacíos, scopes revalidados y destino seguro
+
+- **Subida a repositorios vacíos o nuevos (404 corregido de raíz)**: el error
+  «Recurso no encontrado (404): /repos/…/git/trees/…» ocurría porque el sha del
+  commit se usaba como sha de árbol, y el árbol vacío de Git (4b825dc…) no es
+  consultable en la API. Ahora se pela commit→árbol y el árbol vacío se trata
+  como lista vacía: el análisis marca todo como «nuevo» y el commit se crea sin
+  padre, creando la rama (refs) en el primer envío. Verificado con un repo
+  scratch creado al momento (subida real → verificación → borrado).
+- **Subida forzada (sobrescribir)**: interruptor en Explorer que reenvía también
+  los archivos idénticos (misma ruta y mismo SHA), útil para reaplicar contenido
+  completo o forzar estado en repos nuevos.
+- **Destino sin preselección**: Explorer ya no trae un repo elegido; eliges
+  repositorio y rama explícitamente en cada subida.
+- **Confirmación al cambiar de repo con cola**: interruptor «Confirmar cambio de
+  repo» (activable/desactivable): si hay archivos en cola y cambias de destino,
+  pide confirmación y recalcula carpeta raíz y plan sin perder la cola.
+- **Texto «en bajada» corregido para siempre**: el texto de cualquier fila ya no
+  puede colapsar a una letra por línea (mínimo 210 px y corte de palabra sano);
+  afectaba a «Actualización en vivo» por el control de intervalo.
+- **Scopes revalidados y ampliados**: jerarquía admin⊃write⊃read expandida, seis
+  capacidades nuevas (paquetes, proyectos, discusiones, enterprise, webhooks,
+  claves), relectura automática de scopes en cada respuesta y botón «Revalidar
+  ahora» en Control.
 
 ## Rendimiento
 

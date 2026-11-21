@@ -11,11 +11,12 @@ import { netKeep } from '@/lib/netkeep';
 import { aiChat, aiListModels, AI_PROVIDERS, provOf } from '@/lib/ai';
 import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { LIVE_INTERVALS } from '@/lib/live';
+import { revalidateScopes } from '@/lib/store';
 import { auditSecrets } from '@/lib/security';
 import { GitHubError } from '@/lib/github';
 import { Section, Row, Diag, ConfirmSheet } from '@/components/bits';
 import { ActivityList } from '@/components/ActivityList';
-import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash, IcList } from '@/components/Icons';
+import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash, IcList, IcRefresh } from '@/components/Icons';
 
 export default function ControlPage() {
   const state = useOrbit();
@@ -75,6 +76,7 @@ export default function ControlPage() {
   const p = state.prefs;
   const prov = provOf(p.aiProvider);
   const caps = capsFromScopes(state.scopes);
+  const [scopesBusy, setScopesBusy] = useState(false);
 
   return (
     <>
@@ -144,6 +146,17 @@ export default function ControlPage() {
             </p>
           ) : (
             <>
+            <div className="orbit-row" style={{ borderBottom: 'none', paddingBottom: 4 }}>
+              <div className="orbit-row-text"><b>Revalidación</b><small>Orbit relee los scopes en cada respuesta de GitHub; si editaste el token, fuerza una comprobación ahora</small></div>
+              <div className="orbit-row-ctl">
+                <GlassButton size="sm" icon={<IcRefresh size={13} />} disabled={scopesBusy} onClick={async () => {
+                  setScopesBusy(true);
+                  try { await revalidateScopes(); pushToast('Scopes revalidados', 'ok', 'GitHub redeclaró los permisos del token ahora mismo'); }
+                  catch { pushToast('No se pudo revalidar', 'err', 'Revisa tu conexión y vuelve a intentarlo'); }
+                  finally { setScopesBusy(false); }
+                }}>{scopesBusy ? 'Comprobando…' : 'Revalidar ahora'}</GlassButton>
+              </div>
+            </div>
               {caps.fineGrained ? (
                 <div className="note warn" style={{ marginBottom: 12 }}>
                   Los tokens fine-grained no exponen sus permisos en cabeceras. Orbit habilita lo esencial
