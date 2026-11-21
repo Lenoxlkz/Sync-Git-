@@ -4,7 +4,7 @@
    multi-proveedor con contexto de la cuenta y comandos ejecutables por la IA. */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GlassButton, GlassInput } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput } from '@/components/ui';
 import { useOrbit, pushToast, setPrefs, loadRepos, openFicha, openCode, requestCreatePR, setChatPrefill } from '@/lib/store';
 import { aiChat, provOf, type AIProvider, type ChatMsg } from '@/lib/ai';
 import { gh, createBranch, GitHubError, type GHRepo } from '@/lib/github';

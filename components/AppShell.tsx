@@ -8,8 +8,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { GlassNav, GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
-import { useOrbit, boot, applyAppearance, unlockVault, createVault, pushToast, openFicha } from '@/lib/store';
+import { EngineProvider, AppNav as GlassNav, AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet } from '@/components/ui';
+import { useOrbit, boot, applyAppearance, effectiveEngine, unlockVault, createVault, pushToast, openFicha } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
 import { capsFromScopes, type Cap } from '@/lib/scopes';
 import { ToastStack } from './Toast';
@@ -140,6 +140,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return { navItems: items, moreItems: rest };
   }, [visibleNav, primaryHrefs]);
 
+  /* motor visual efectivo: auto por User-Agent, manual o forzado por Reducir movimiento */
+  const engine = useMemo(() => effectiveEngine(state.prefs), [state.prefs]);
+
   const isMoreActive = !navItems.some(n => n.href && (n.href === '/' ? pathname === '/' : pathname.startsWith(n.href)));
   const activeIndex = isMoreActive
     ? Math.max(0, navItems.findIndex(n => n.more))
@@ -147,6 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const current = visibleNav.find(n => n.href === '/' ? pathname === '/' : pathname.startsWith(n.href)) ?? visibleNav[0] ?? NAV[0];
 
   return (
+    <EngineProvider value={engine}>
     <div className="app-frame">
       <div className="app-main">
         <header className="topbar">
@@ -154,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <OrbitLogo size={26} />
           <span>
             <b>GitHub Orbit</b>
-            <small>Centro de mando · v3.3</small>
+            <small>Centro de mando · v3.4</small>
           </span>
           </Link>
           <div className="tb-title"><h1>{current.label}</h1></div>
@@ -235,6 +239,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <ToastStack />
     </div>
+    </EngineProvider>
   );
 }
 

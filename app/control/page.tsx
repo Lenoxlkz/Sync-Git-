@@ -4,7 +4,7 @@
    apariencia, NetKeep, IA y zona de peligro. */
 
 import { useEffect, useState } from 'react';
-import { GlassButton, GlassInput, GlassSwitch, GlassSegmented, GlassCard, GlassSlider, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwitch, AppSegmented as GlassSegmented, AppCard as GlassCard, AppSlider as GlassSlider, AppSheet as GlassSheet } from '@/components/ui';
 import { useSyncExternalStore } from 'react';
 import { useOrbit, connect, disconnect, pushToast, setPrefs, destroyVault, openVaultSheet, wipeAll, ACCENTS } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
@@ -181,6 +181,16 @@ export default function ControlPage() {
           : 'Sigue el sistema o fija tu tema — Liquid Glass responde a data-theme'}
       >
         <GlassCard padding="18px">
+          <Row label="Motor visual" sub={p.reduceMotion
+            ? '«Reducir movimiento» fuerza el tema de bajo consumo (sin blur ni filtros SVG)'
+            : 'Auto: Android 13 o menos arranca en Bajo consumo, Android 14+ en Liquid Glass · cámbialo cuando quieras'}>
+            <GlassSegmented
+              options={[{ label: 'Auto' }, { label: 'Liquid Glass' }, { label: 'Bajo consumo' }]}
+              value={['auto', 'glass', 'expressive'].indexOf(p.themeEngine)}
+              onChange={i => { if (!p.reduceMotion) setPrefs({ themeEngine: (['auto', 'glass', 'expressive'] as const)[i] }); }}
+              aria-label="Motor visual"
+            />
+          </Row>
           {p.reduceMotion ? (
             <>
               <Row label="Tema" sub="Reducir movimiento fuerza el modo oscuro AMOLED (negro puro, sin aurora)">

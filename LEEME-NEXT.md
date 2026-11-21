@@ -1,4 +1,4 @@
-# Orbit Next v3.3 — Next.js + Liquid Glass
+# Orbit Next v3.4 — Next.js + Liquid Glass
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -61,6 +61,29 @@ háptica y título vivo con la cuota.**
 - **Modal de proveedores con scroll real**: `.picker-list` ahora es scrollable (`overflow-y: auto`, `touch-action: pan-y`, `overscroll-behavior: contain`) — no interfiere con el arrastre del sheet (el gesto vive en `.lg-sheet__grabber-zone`); se llega al fondo de los 11 proveedores sin cortes.
 - **Sección IA reordenada**: Proveedor → API Key → URL Base → Modelo con textos concisos; el ojo de mostrar/ocultar convive con el botón de limpiar (×) del vendor; tocar el ojo **no** guarda (preventDefault en mousedown) y la clave guardada sigue sin mostrarse jamás.
 - Compositor del chat re-ajustado a la altura de GlassNav (68px) para no quedar tapado.
+
+
+## Novedades v3.4 — tema de bajo consumo (Material 3 Expressive)
+
+- **Dos motores visuales intercambiables**: `Liquid Glass` (vendor, con blur y refracción SVG) y
+  `Bajo consumo` basado en **Material 3 Expressive** (`@grenishrai/expressive` + Tailwind CSS v4 +
+  Base UI + `motion`): **scheme de color expressive, motion scheme `fluid`, motion engine `motion`**,
+  seed `#0a84ff` (el acento de Orbit) y corner scale expressive. El motor Expressive elimina por
+  completo los `backdrop-filter` y los filtros SVG de refracción (verificado: 0 elementos con blur
+  en marcha vs 7 en Liquid Glass) — la RAM que consume el glass desaparece.
+- **Detección automática por User-Agent**: `Android ≤ 13` arranca en **Bajo consumo**;
+  `Android ≥ 14` y el resto (iOS/desktop) en **Liquid Glass**. Se aplica antes del primer paint
+  (script inline) y en el arranque de la app (`detectAndroidVersion()` / `effectiveEngine()`).
+- **Cambio manual sin recargar**: Control Center → Apariencia → «Motor visual»
+  (Auto / Liquid Glass / Bajo consumo). La elección se guarda y manda sobre la detección;
+  «Reducir movimiento» fuerza Bajo consumo + AMOLED (superficie negra real también en Material).
+- **Arquitectura**: capa adaptadora `components/ui` — las páginas importan `AppButton as GlassButton`
+  etc., así el JSX de la app no cambió y cada pieza (botón, input, switch, card, sheet, segmented,
+  slider, barra de navegación) resuelve con el motor activo. Dark mode de Material sincronizado con
+  la clase `.dark` en `<html>`.
+- **Tailwind CSS v4 sin preflight** (`theme + utilities` por capas) para no alterar el CSS propio de
+  Orbit; el puente `@theme inline` + utilities del registry Expressive vive en `app/expressive.css`
+  junto al tema generado (`.dark`, springs fluid, prefers-reduced-motion → sin motion).
 
 ## Rendimiento
 

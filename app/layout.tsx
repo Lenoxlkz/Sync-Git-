@@ -18,19 +18,28 @@ export const viewport: Viewport = {
   themeColor: '#06060a',
 };
 
-/* Tema antes del primer paint: sin flash. data-theme en <html> gobierna
-   también las variables de Liquid Glass. «Reducir movimiento» fuerza AMOLED. */
+/* Tema y motor visual antes del primer paint: sin flash. data-theme gobierna
+   las variables de la app y de Liquid Glass; .dark el esquema de Expressive;
+   data-engine elige liquid glass o el tema de bajo consumo (Android ≤13 →
+   expressive; Android ≥14 y resto → glass; Reducir movimiento fuerza expressive). */
 const themeScript = `(()=>{try{
   var p=JSON.parse(localStorage.getItem('orbit.prefs')||'{}');
   var t=p.theme||'auto';
   var sys=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';
+  var dark;
   if(p.reduceMotion){
-    document.documentElement.dataset.theme='dark';
+    dark=true;
     document.documentElement.dataset.amoled='1';
     document.documentElement.dataset.motion='reduce';
   }else{
-    document.documentElement.dataset.theme=(t==='auto')?sys:t;
+    dark=(t==='auto')?(sys==='dark'):(t==='dark');
   }
+  document.documentElement.dataset.theme=dark?'dark':'light';
+  document.documentElement.classList.toggle('dark',dark);
+  var m=navigator.userAgent.match(/Android\\s+(\\d+)/i);
+  var av=m?parseInt(m[1],10):null;
+  var eng=p.reduceMotion?'expressive':(p.themeEngine==='glass'||p.themeEngine==='expressive')?p.themeEngine:(av!==null&&av<=13?'expressive':'glass');
+  document.documentElement.dataset.engine=eng;
   if(p.accent)document.documentElement.style.setProperty('--orbit-accent',p.accent);
 }catch(e){}})()`;
 

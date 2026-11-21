@@ -4,7 +4,7 @@
    Puerto de openRepoFicha del original sobre GlassSheet + Liquid Glass. */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, pushToast, setPrefs } from '@/lib/store';
 import { gh, createBranch, GitHubError, type GHBranch, type GHCommitFull, type GHTag, type GHRelease } from '@/lib/github';
 import { logAct } from '@/lib/activity';

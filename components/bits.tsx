@@ -3,7 +3,7 @@
 /* Piezas reutilizables de Orbit Next construidas sobre Liquid Glass. */
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import Link from 'next/link';
-import { GlassButton, GlassInput, GlassSheet, GlassCard } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet, AppCard as GlassCard } from '@/components/ui';
 import { useOrbit } from '@/lib/store';
 import { IcSearch, IcBranch, IcShield, IcX } from './Icons';
 

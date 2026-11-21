@@ -4,7 +4,7 @@
    350 MB por archivo) con ventana de reconsideración de 120 s y subida directa
    a uploads.github.com con progreso por archivo y reintento de los fallidos. */
 import { useRef, useState } from 'react';
-import { GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet } from '@/components/ui';
 import { pushToast } from '@/lib/store';
 import { gh, uploadReleaseAsset, type GHRelease } from '@/lib/github';
 import { logAct } from '@/lib/activity';

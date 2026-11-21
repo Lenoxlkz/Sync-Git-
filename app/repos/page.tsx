@@ -4,7 +4,7 @@
    contextual (ficha · código · fork · visibilidad · eliminar) y creación. */
 import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { GlassButton, GlassInput, GlassSwitch, GlassCard, GlassSegmented, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwitch, AppCard as GlassCard, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, loadRepos, pushToast, openFicha, closeFicha, setPrefs } from '@/lib/store';
 import { gh, GitHubError } from '@/lib/github';
 import { logAct } from '@/lib/activity';

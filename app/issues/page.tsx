@@ -3,7 +3,7 @@
 /* Issues: lista global de la cuenta con filtro por etiqueta, creación con
    etiquetas, edición (título/cuerpo), comentarios y cierre/reapertura. */
 import { useCallback, useEffect, useState } from 'react';
-import { GlassButton, GlassInput, GlassSegmented, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, pushToast } from '@/lib/store';
 import { gh, GitHubError, type GHIssue, type GHComment } from '@/lib/github';
 import { logAct } from '@/lib/activity';

@@ -4,7 +4,7 @@
    del cambio, revisión (aprobar / pedir cambios / comentar), merge y creación
    con asistente y confirmación previa. */
 import { useCallback, useEffect, useState } from 'react';
-import { GlassButton, GlassInput, GlassSegmented, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, pushToast, consumeCreatePR } from '@/lib/store';
 import { gh, GitHubError, type GHPull, type GHCompare } from '@/lib/github';
 import { logAct } from '@/lib/activity';

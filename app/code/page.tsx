@@ -4,7 +4,7 @@
    búsqueda interna, copiar/descargar, edición con commit real, previsualización
    de Markdown/HTML y comparador de ramas con diff archivo por archivo. */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GlassButton, GlassInput, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, consumeCodeCtx, pushToast, setPrefs } from '@/lib/store';
 import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
 import { detectLang, tokenize, buildTree, saveFileEdit } from '@/lib/code';

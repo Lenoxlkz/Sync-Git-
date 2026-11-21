@@ -3,7 +3,7 @@
 /* Guía y ayuda: conceptos en palabras simples, comandos del chat y notas de
    seguridad. Puerto de la vista Guía del original, ajustado a Orbit Next. */
 import Link from 'next/link';
-import { GlassButton } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton } from '@/components/ui';
 import { Md } from '@/lib/md';
 import { Section } from '@/components/bits';
 import { IcSparkles, IcTerminal, IcLayers, IcShield, IcChevR } from '@/components/Icons';

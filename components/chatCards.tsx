@@ -3,7 +3,7 @@
 /* Tarjetas del chat (puerto de las mcard del original): resultados de los
    comandos renderizados como piezas Liquid Glass dentro de la conversación. */
 import Link from 'next/link';
-import { GlassButton } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton } from '@/components/ui';
 import {
   IcFolder, IcBranch, IcCommit, IcIssue, IcPR, IcSearch, IcWifi, IcCompare, IcCheck, IcX, IcAlert,
   IcCode, IcSparkles, IcTerminal, IcArrowRight, IcPlus, IcSettings, IcInfo, IcBook,

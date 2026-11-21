@@ -1,3 +1,7 @@
+/* Tema de bajo consumo (Material 3 Expressive): puente Tailwind v4
+   sin preflight + tema generado (seed #0a84ff, scheme fluid, engine motion). */
+@import './expressive.css';
+
 /* ================================================================
    GitHub Orbit Next — sistema de diseño (tokens + chrome)
    Las variables --lg-* de Liquid Glass viven en su stylesheet; aquí
@@ -605,3 +609,83 @@ html[data-amoled="1"] #aurora { display: none }
 }
 .ibtn--inline:hover { color: var(--text-1) }
 .ibtn--inline:active { transform: scale(.92) }
+
+/* ================================================================
+   Motor de bajo consumo (Material 3 Expressive)
+   Remapea los tokens de la app al esquema Material generado: el CSS
+   propio de Orbit no cambia, solo las variables que lee.
+   ================================================================ */
+html[data-engine="expressive"] {
+  --bg: var(--ex-color-surface);
+  --bg-grad: none;
+  --text: var(--ex-color-on-surface);
+  --text-2: var(--ex-color-on-surface-variant);
+  --text-3: var(--ex-color-outline);
+  --border: var(--ex-color-outline-variant);
+  --surface: var(--ex-color-surface-container-low);
+  --surface-2: var(--ex-color-surface-container-high);
+  --ok: var(--ex-color-tertiary);
+  --err: var(--ex-color-error);
+  --orbit-accent: var(--ex-color-primary);
+}
+html[data-engine="expressive"] #aurora { display: none }
+html[data-engine="expressive"] body {
+  background-color: var(--ex-color-surface);
+  background-image: none;
+}
+
+/* Hoja de Expressive (AppSheet): centrada, con tope de alto y scroll interno */
+.exp-sheet {
+  width: min(560px, 100%);
+  max-height: min(80dvh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: 8px;
+}
+
+/* Segmented de Expressive: botones segmentados Material 3 */
+.exp-seg {
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid var(--ex-color-outline-variant);
+  background: var(--ex-color-surface);
+}
+.exp-seg button {
+  padding: 0 16px;
+  height: 40px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ex-color-on-surface-variant);
+  background: none;
+  border: none;
+  border-left: 1px solid var(--ex-color-outline-variant);
+  cursor: pointer;
+  transition: background .2s, color .2s;
+}
+.exp-seg button:first-child { border-left: none }
+.exp-seg button:hover { background: color-mix(in srgb, var(--ex-color-on-surface) 6%, transparent) }
+.exp-seg button.sel {
+  background: var(--ex-color-secondary-container);
+  color: var(--ex-color-on-secondary-container);
+  font-weight: 600;
+}
+.exp-seg--sm button { height: 34px; padding: 0 12px; font-size: 13px }
+
+/* Navigation bar de Expressive: barra completa en móvil, contenida en desktop */
+.exp-navbar {
+  width: 100%;
+}
+@media (min-width: 640px) {
+  .exp-navbar {
+    max-width: 640px;
+    border-radius: 24px 24px 0 0;
+    box-shadow: 0 -2px 18px rgb(0 0 0 / .12);
+  }
+}
+/* AMOLED dentro del motor Expressive: superficie verdaderamente negra */
+html[data-engine="expressive"][data-amoled] {
+  --ex-color-surface: #000;
+  --ex-color-background: #000;
+}

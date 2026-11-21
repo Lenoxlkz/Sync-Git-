@@ -5,7 +5,7 @@
    leyendo el árbol final. Con sincronización espejo opcional. */
 
 import { useEffect, useRef, useState, type DragEvent } from 'react';
-import { GlassButton, GlassInput, GlassSwitch, GlassCard, GlassSegmented, GlassSheet } from '@zakisheriff/liquid-glass';
+import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwitch, AppCard as GlassCard, AppSegmented as GlassSegmented, AppSheet as GlassSheet } from '@/components/ui';
 import { useOrbit, setPrefs, pushToast } from '@/lib/store';
 import { gh, blobText, GitHubError, type GHTreeEntry } from '@/lib/github';
 import { analyze, commitOrbit, type FileEntry, type Plan, type CommitResult } from '@/lib/upload';

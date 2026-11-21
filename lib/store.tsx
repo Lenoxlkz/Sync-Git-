@@ -13,10 +13,16 @@ import type { AIProvider } from './ai';
 
 export type ThemePref = 'auto' | 'light' | 'dark';
 
+/* Motor visual: auto = detección por User-Agent (Android ≤13 → bajo consumo,
+   Android ≥14 y resto → Liquid Glass); el usuario puede fijarlo a mano. */
+export type ThemeEnginePref = 'auto' | 'glass' | 'expressive';
+export type Engine = 'glass' | 'expressive';
+
 export interface Prefs {
   theme: ThemePref;
   accent: string;
   reduceMotion: boolean;
+  themeEngine: ThemeEnginePref;
   netkeep: boolean;
   netkeepKbps: number;
   aiProvider: AIProvider;
@@ -33,7 +39,7 @@ export interface Prefs {
 export const ACCENTS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#40cbe0'];
 
 const DEFAULT_PREFS: Prefs = {
-  theme: 'auto', accent: '#0a84ff', reduceMotion: false,
+  theme: 'auto', accent: '#0a84ff', reduceMotion: false, themeEngine: 'auto',
   netkeep: true, netkeepKbps: 40,
   aiProvider: 'openai', aiKey: '', aiModel: '', aiBaseUrl: '', aiGatewayKey: '',
   remember: false, rememberDevice: false, lastRepo: '', lastBranch: '',
@@ -131,18 +137,39 @@ function loadPrefs(): Prefs {
   } catch { return DEFAULT_PREFS; }
 }
 
+/** Versión mayor de Android según el User-Agent (null si no es Android). */
+export function detectAndroidVersion(): number | null {
+  if (typeof navigator === 'undefined') return null;
+  const m = navigator.userAgent.match(/Android\s+(\d+)/i);
+  return m ? parseInt(m[1], 10) : null;
+}
+
+/** Motor efectivo: reduceMotion fuerza el de bajo consumo (sin blur ni
+    filtros SVG); auto resuelve por User-Agent; manual manda si se fijó. */
+export function effectiveEngine(p: Pick<Prefs, 'reduceMotion' | 'themeEngine'>): Engine {
+  if (p.reduceMotion) return 'expressive';
+  if (p.themeEngine === 'glass' || p.themeEngine === 'expressive') return p.themeEngine;
+  const av = detectAndroidVersion();
+  return av !== null && av <= 13 ? 'expressive' : 'glass';
+}
+
 export function applyAppearance(p: Prefs) {
   const html = document.documentElement;
   const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   /* «Reducir movimiento» fuerza el modo oscuro AMOLED: negro puro, sin aurora;
      al desactivarlo se vuelve al tema guardado y AMOLED deja de estar disponible. */
+  let theme: 'dark' | 'light';
   if (p.reduceMotion) {
-    html.dataset.theme = 'dark';
+    theme = 'dark';
     html.dataset.amoled = '1';
   } else {
-    html.dataset.theme = p.theme === 'auto' ? (sysDark ? 'dark' : 'light') : p.theme;
+    theme = p.theme === 'auto' ? (sysDark ? 'dark' : 'light') : p.theme;
     delete html.dataset.amoled;
   }
+  html.dataset.theme = theme;
+  /* Expressive (Material) usa la clase .dark en un ancestro para su esquema */
+  html.classList.toggle('dark', theme === 'dark');
+  html.dataset.engine = effectiveEngine(p);
   html.style.setProperty('--orbit-accent', p.accent);
   if (p.reduceMotion) html.dataset.motion = 'reduce';
   else delete html.dataset.motion;
