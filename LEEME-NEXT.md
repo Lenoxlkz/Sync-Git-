@@ -1,4 +1,4 @@
-# Orbit Next v3.8 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
+# Orbit Next v3.9 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -171,6 +171,26 @@ háptica y título vivo con la cuota.**
 - Verificado end to end con un repo real: archivo enviado a «docs/sub/…» y a la
   raíz, tanto en repos con historial como en uno vacío (primer commit con la
   Contents API respeta la ruta elegida, creando las carpetas).
+
+
+## Novedades v3.9 — Control: reemplazo de token y «Recordar» estricto
+
+- **«Reemplazar token»** junto a «Desconectar» (Control Center): abre una hoja
+  donde pegas el token nuevo, se verifica contra GitHub y sustituye al actual
+  en toda la app al instante; si falla la verificación, el token anterior
+  sigue activo y el error se muestra en la hoja. Con bóveda desbloqueada, el
+  nuevo token se re-sella cifrado automáticamente.
+- **«Recordar durante la sesión» en modo estricto**: siempre activada por
+  defecto y sin posibilidad de desactivarla (el interruptor queda fijado).
+- **La bóveda tiene precedencia**: si existe una bóveda en el dispositivo,
+  «Recordar» no tiene efecto ninguno (el interruptor se deshabilita y así lo
+  dice su texto) — la restauración pasa por desbloquear la bóveda, también en
+  el arranque de la app.
+- **La bóveda guarda token y claves API** (proveedor, clave, URL base, modelo
+  y clave de gateway): en disco solo viven cifradas dentro de la bóveda cuando
+  está desbloqueada; al desbloquear se restauran en la sesión y al cambiar
+  alguna se re-sella sola. Al eliminar la bóveda, las claves vuelven al
+  almacenamiento local en claro (como antes).
 
 ## Rendimiento
 

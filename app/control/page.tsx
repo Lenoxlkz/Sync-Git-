@@ -31,6 +31,9 @@ export default function ControlPage() {
   const [modelsBusy, setModelsBusy] = useState(false);
   const [audit, setAudit] = useState(-1);
   const [provOpen, setProvOpen] = useState(false);
+  const [replOpen, setReplOpen] = useState(false);
+  const [replTok, setReplTok] = useState('');
+  const [replErr, setReplErr] = useState('');
 
   useEffect(() => { setAudit(auditSecrets()); }, []);
 
@@ -45,6 +48,20 @@ export default function ControlPage() {
       const m = e instanceof GitHubError ? e.message : 'error desconocido';
       setErr(m);
       pushToast('No se pudo verificar el token', 'err', m);
+    } finally { setBusy(false); }
+  }
+
+  async function doReplace() {
+    const t = replTok.trim().replace(/\s+/g, '');
+    if (!t) { setReplErr('Pega el token nuevo primero'); return; }
+    setReplErr(''); setBusy(true);
+    try {
+      await connect(t, { remember: true, device: state.prefs.rememberDevice });
+      setReplOpen(false); setReplTok('');
+      pushToast('Token reemplazado', 'ok', 'El nuevo token está activo en toda la app' + (state.prefs.rememberDevice && state.vaultExists ? ' · bóveda actualizada' : ''));
+    } catch (e) {
+      const m = e instanceof GitHubError ? e.message : 'error desconocido';
+      setReplErr(m);
     } finally { setBusy(false); }
   }
 
@@ -86,10 +103,12 @@ export default function ControlPage() {
             <>
               <GlassInput type="password" placeholder="ghp_… o github_pat_…" value={tok} onChange={e => setTok(e.target.value)} icon={<IcShield size={15} />} aria-label="Personal Access Token" tint="var(--orbit-accent)" />
               <div style={{ height: 8 }} />
-              <Row label="Recordar durante la sesión" sub="sessionStorage: solo la pestaña actual, se borra al cerrarla">
-                <GlassSwitch checked={p.remember} onChange={v => setPrefs({ remember: v })} tint="var(--orbit-accent)" aria-label="Recordar sesión" />
+              <Row label="Recordar durante la sesión" sub={state.vaultExists
+                ? 'no tiene efecto: la bóveda guarda el token y las claves API cifrados y gestiona la restauración al desbloquearla'
+                : 'siempre activada: el token se guarda en sessionStorage de esta pestaña y se borra al cerrarla'}>
+                <GlassSwitch checked disabled onChange={() => { }} tint="var(--orbit-accent)" aria-label="Recordar sesión (siempre activada)" />
               </Row>
-              <Row label="Mantener en este dispositivo" sub="Token cifrado con AES-256-GCM en una bóveda local; se restaura tras desbloquear">
+              <Row label="Mantener en este dispositivo" sub="Token y claves API cifrados con AES-256-GCM en una bóveda local; se restauran tras desbloquear">
                 <GlassSwitch checked={p.rememberDevice} onChange={v => { setPrefs({ rememberDevice: v }); if (v && !state.vaultUnlocked) openVaultSheet(state.vaultExists ? 'unlock' : 'create'); }} tint="var(--orbit-accent)" aria-label="Mantener en este dispositivo" />
               </Row>
               <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
@@ -118,7 +137,10 @@ export default function ControlPage() {
                 <GlassCard padding="12px 16px" className="stat-box"><small>Límite</small><b>{state.rate ? state.rate.limit : '—'}</b></GlassCard>
                 <GlassCard padding="12px 16px" className="stat-box"><small>Repos visibles</small><b>{state.repos.length}</b></GlassCard>
               </div>
-              <GlassButton destructive onClick={disconnect}>Desconectar</GlassButton>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <GlassButton icon={<IcRefresh size={14} />} disabled={state.connecting} onClick={() => { setReplTok(''); setReplErr(''); setReplOpen(true); }}>Reemplazar token</GlassButton>
+                <GlassButton destructive onClick={disconnect}>Desconectar</GlassButton>
+              </div>
             </>
           )}
         </GlassCard>
@@ -382,6 +404,20 @@ export default function ControlPage() {
         confirmLabel="Eliminar bóveda"
         onConfirm={() => destroyVault()}
       />
+
+      {/* Reemplazar el token activo por uno nuevo */}
+      <GlassSheet open={replOpen} onClose={() => setReplOpen(false)} detents={['medium']} aria-label="Reemplazar token">
+        <div className="sheet-head"><h3>Reemplazar token</h3></div>
+        <p className="sheet-text">Pega el token nuevo: se verifica contra GitHub y sustituye al actual en toda la app{state.prefs.rememberDevice && state.vaultExists ? ' · la bóveda se actualiza con el nuevo' : ''}. El token anterior se olvida al instante.</p>
+        <GlassInput type="password" placeholder="ghp_… o github_pat_…" value={replTok} onChange={e => setReplTok(e.target.value)} icon={<IcShield size={15} />} aria-label="Token nuevo" tint="var(--orbit-accent)" />
+        <Diag text={replErr || null} />
+        <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+          <GlassButton variant="filled" tint="var(--orbit-accent)" disabled={busy || !replTok.trim() || state.connecting} onClick={doReplace}>
+            {busy || state.connecting ? 'Verificando…' : 'Verificar y reemplazar'}
+          </GlassButton>
+          <GlassButton onClick={() => setReplOpen(false)}>Cancelar</GlassButton>
+        </div>
+      </GlassSheet>
 
       {/* Modelos disponibles del proveedor */}
       <GlassSheet open={modelsOpen} onClose={() => setModelsOpen(false)} detents={['medium', 'large']} aria-label="Modelos disponibles">

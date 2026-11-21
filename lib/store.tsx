@@ -46,7 +46,7 @@ const DEFAULT_PREFS: Prefs = {
   theme: 'auto', accent: '#0a84ff', reduceMotion: false, themeEngine: 'auto',
   netkeep: true, netkeepKbps: 40,
   aiProvider: 'openai', aiKey: '', aiModel: '', aiBaseUrl: '', aiGatewayKey: '',
-  remember: false, rememberDevice: false, lastRepo: '', lastBranch: '',
+  remember: true, rememberDevice: false, lastRepo: '', lastBranch: '',
   live: false, liveInt: 60,
   confirmRepoSwitch: true, forceUpload: false,
 };
@@ -145,7 +145,8 @@ export function consumeCreatePR(): number {
 function loadPrefs(): Prefs {
   try {
     const raw = localStorage.getItem('orbit.prefs');
-    return raw ? { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>) } : DEFAULT_PREFS;
+    /* «Recordar durante la sesión» es estricto: siempre activada, sin excepción */
+    return raw ? { ...DEFAULT_PREFS, ...(JSON.parse(raw) as Partial<Prefs>), remember: true } : DEFAULT_PREFS;
   } catch { return DEFAULT_PREFS; }
 }
 
@@ -195,8 +196,30 @@ export async function revalidateScopes(): Promise<void> {
 
 export function setPrefs(p: Partial<Prefs>) {
   const prefs = { ...state.prefs, ...p };
-  try { localStorage.setItem('orbit.prefs', JSON.stringify(prefs)); } catch { /* privado */ }
+  persistPrefs(prefs, state.token);
   patch({ prefs });
+}
+
+/* Secretos que la bóveda guarda junto al token (claves API de IA). */
+function aiSecrets(prefs: Prefs): Partial<Prefs> {
+  return { aiProvider: prefs.aiProvider, aiKey: prefs.aiKey, aiModel: prefs.aiModel, aiBaseUrl: prefs.aiBaseUrl, aiGatewayKey: prefs.aiGatewayKey };
+}
+
+let sealedSig = '';
+
+/* En disco las claves API viven SOLO cifradas dentro de la bóveda cuando está
+   desbloqueada (el prefs local va sin ellas); en memoria de la sesión siempre
+   están. La bóveda se re-sella únicamente cuando un secreto cambia de verdad. */
+function persistPrefs(prefs: Prefs, token: string | null) {
+  const sealed = !!vaultPass && vaultExists();
+  try {
+    localStorage.setItem('orbit.prefs', JSON.stringify(sealed ? { ...prefs, aiKey: '', aiGatewayKey: '' } : prefs));
+  } catch { /* privado */ }
+  if (!sealed) { sealedSig = ''; return; }
+  const sig = JSON.stringify([token, prefs.aiProvider, prefs.aiKey, prefs.aiModel, prefs.aiBaseUrl, prefs.aiGatewayKey]);
+  if (sig === sealedSig) return;
+  sealedSig = sig;
+  vaultSeal({ token, ai: aiSecrets(prefs) }, vaultPass!).catch(() => { sealedSig = ''; });
 }
 
 /* ---------- conexión ---------- */
@@ -206,12 +229,13 @@ export async function connect(token: string, opts: { remember?: boolean; device?
   try {
     const user = await gh.user();
     lastScopes = lastScopes || [];
-    const remember = opts.remember ?? false;
+    const remember = opts.remember ?? true;
     const device = opts.device ?? false;
     let vaultSheet: VaultSheet = 'none';
     if (device) {
       if (state.vaultUnlocked && vaultPass) {
-        await vaultSeal({ token }, vaultPass);
+        await vaultSeal({ token, ai: aiSecrets(state.prefs) }, vaultPass);
+        pushToast('Token cifrado en este dispositivo', 'ok', 'La bóveda se actualizó con el token nuevo');
       } else if (vaultExists()) {
         vaultSheet = 'unlock';
         pendingDeviceToken = token;
@@ -221,12 +245,13 @@ export async function connect(token: string, opts: { remember?: boolean; device?
       }
     }
     try { if (remember) sessionStorage.setItem('orbit.token', token); else sessionStorage.removeItem('orbit.token'); } catch { /* privado */ }
+    const newPrefs = remember || device ? { ...state.prefs, remember, rememberDevice: device || state.prefs.rememberDevice } : state.prefs;
+    persistPrefs(newPrefs, token);
     patch({
       token, user, connected: true, connecting: false, scopes: lastScopes || [],
       vaultSheet, vaultExists: state.vaultExists || vaultExists(),
-      prefs: remember || device ? { ...state.prefs, remember, rememberDevice: device || state.prefs.rememberDevice } : state.prefs,
+      prefs: newPrefs,
     });
-    setPrefs(remember || device ? { remember, rememberDevice: device || state.prefs.rememberDevice } : {});
     pushToast('Conectado a GitHub', 'ok', '@' + user.login + (lastScopes?.length ? ' · scopes: ' + lastScopes.join(', ') : ''));
     loadRepos().catch(() => { /* la lista se recarga al usarse */ });
   } catch (e) {
@@ -256,13 +281,15 @@ export function openVaultSheet(which: VaultSheet) {
 }
 
 export async function unlockVault(pass: string): Promise<boolean> {
-  const payload = await vaultUnlock<{ token?: string }>(pass);
+  const payload = await vaultUnlock<{ token?: string; ai?: Partial<Prefs> }>(pass);
   if (!payload) {
     patch({ vaultError: 'Contraseña incorrecta — la bóveda no se abre' });
     return false;
   }
   vaultPass = pass;
   patch({ vaultUnlocked: true, vaultSheet: 'none', vaultError: '' });
+  /* primero la sesión: el re-sellado que dispara setPrefs al restaurar las
+     claves debe ver el token ya en el estado (si no, sellaría sin él) */
   if (payload.token) {
     setToken(payload.token);
     try {
@@ -275,8 +302,16 @@ export async function unlockVault(pass: string): Promise<boolean> {
       pushToast('El token guardado ya no es válido', 'err', 'Conéctate de nuevo en Control Center');
     }
   }
+  if (payload.ai && (payload.ai.aiKey || payload.ai.aiGatewayKey)) {
+    setPrefs({
+      aiProvider: payload.ai.aiProvider || state.prefs.aiProvider,
+      aiKey: payload.ai.aiKey || '', aiModel: payload.ai.aiModel || '',
+      aiBaseUrl: payload.ai.aiBaseUrl || '', aiGatewayKey: payload.ai.aiGatewayKey || '',
+    });
+    pushToast('Claves API restauradas desde la bóveda', 'ok');
+  }
   if (pendingDeviceToken) {
-    await vaultSeal({ token: pendingDeviceToken }, pass);
+    await vaultSeal({ token: pendingDeviceToken, ai: aiSecrets(state.prefs) }, pass);
     pendingDeviceToken = null;
     pushToast('Token cifrado en este dispositivo', 'ok');
   }
@@ -286,10 +321,11 @@ export async function unlockVault(pass: string): Promise<boolean> {
 export async function createVault(pass1: string, pass2: string): Promise<boolean> {
   if (pass1.length < 6) { patch({ vaultError: 'La contraseña debe tener al menos 6 caracteres' }); return false; }
   if (pass1 !== pass2) { patch({ vaultError: 'Las contraseñas no coinciden' }); return false; }
-  await vaultSeal({ token: state.token || pendingDeviceToken }, pass1);
+  await vaultSeal({ token: state.token || pendingDeviceToken, ai: aiSecrets(state.prefs) }, pass1);
   vaultPass = pass1;
   pendingDeviceToken = null;
   patch({ vaultUnlocked: true, vaultSheet: 'none', vaultError: '', vaultExists: true });
+  persistPrefs(state.prefs, state.token);
   pushToast('Bóveda creada', 'ok', 'El token queda cifrado con AES-256-GCM en este dispositivo');
   return true;
 }
@@ -297,7 +333,9 @@ export async function createVault(pass1: string, pass2: string): Promise<boolean
 export function destroyVault() {
   vaultDestroy();
   vaultPass = null;
+  sealedSig = '';
   patch({ vaultExists: false, vaultUnlocked: false });
+  persistPrefs(state.prefs, state.token);
   pushToast('Bóveda eliminada', 'info');
 }
 
@@ -309,6 +347,7 @@ export function wipeAll() {
   } catch { /* privado */ }
   vaultPass = null;
   pendingDeviceToken = null;
+  sealedSig = '';
   setToken(null);
   try { localStorage.removeItem('orbit.chat'); } catch { /* privado */ }
   state = { ...state, token: null, user: null, connected: false, connecting: false, rate: null, scopes: [], repos: [], vaultExists: false, vaultUnlocked: false, vaultSheet: 'none', prefs: DEFAULT_PREFS };
@@ -325,6 +364,12 @@ export async function boot(): Promise<void> {
   netKeep.setTarget(prefs.netkeepKbps);
   if (prefs.netkeep) netKeep.start();
 
+  /* la bóveda manda: si existe, «Recordar durante la sesión» no tiene efecto
+     ninguno — la restauración pasa por desbloquearla */
+  if (vault) {
+    patch({ vaultSheet: 'unlock' });
+    return;
+  }
   let token: string | null = null;
   try { token = sessionStorage.getItem('orbit.token'); } catch { /* privado */ }
   if (token) {
@@ -338,9 +383,6 @@ export async function boot(): Promise<void> {
       setToken(null);
       pushToast('El token guardado ya no es válido', 'err', e instanceof GitHubError ? e.message : 'Conéctate de nuevo');
     }
-  }
-  if (vault) {
-    patch({ vaultSheet: 'unlock' });
   }
 }
 
