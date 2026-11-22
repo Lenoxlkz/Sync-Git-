@@ -12,7 +12,8 @@ import { logAct } from '@/lib/activity';
 import { Md } from '@/lib/md';
 import { Section, ConfirmSheet } from '@/components/bits';
 import { ChatCard, type CardSpec, type CardCtx } from '@/components/chatCards';
-import { IcSend, IcSparkles } from '@/components/Icons';
+import { IcSparkles } from '@/components/Icons';
+import { ChatComposer } from '@/components/ChatComposer';
 
 interface Bubble { role: 'user' | 'orbit' | 'sys'; text: string; ts: number; card?: CardSpec }
 
@@ -405,17 +406,8 @@ export default function ChatPage() {
           ))}
           <button className="chip-btn acc" onClick={() => router.push('/control/')}><IcSparkles size={12} />{aiLabel}</button>
         </div>
-        <div className="composer">
-          <GlassInput
-            placeholder="Escribe en lenguaje natural… «muéstrame mis repositorios»"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-            aria-label="Mensaje"
-            tint="var(--orbit-accent)"
-          />
-          <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcSend size={16} />} aria-label="Enviar" disabled={busy || !input.trim()} onClick={send} />
-        </div>
+        <ChatComposer value={input} onChange={setInput} onSend={send} busy={busy}
+          placeholder="Escribe en lenguaje natural… «muéstrame mis repositorios»" />
       </div>
 
       {!connected ? (

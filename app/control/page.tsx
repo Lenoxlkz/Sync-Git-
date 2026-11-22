@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { AppButton as GlassButton, AppInput as GlassInput, AppSwitch as GlassSwitch, AppSegmented as GlassSegmented, AppCard as GlassCard, AppSlider as GlassSlider, AppSheet as GlassSheet } from '@/components/ui';
 import { useSyncExternalStore } from 'react';
-import { useOrbit, connect, disconnect, pushToast, setPrefs, destroyVault, openVaultSheet, wipeAll, ACCENTS } from '@/lib/store';
+import { useOrbit, connect, disconnect, pushToast, setPrefs, destroyVault, sealVault, openVaultSheet, wipeAll, ACCENTS } from '@/lib/store';
 import { netKeep } from '@/lib/netkeep';
 import { aiChat, aiListModels, AI_PROVIDERS, provOf } from '@/lib/ai';
 import { CAPS, capsFromScopes } from '@/lib/scopes';
@@ -16,7 +16,7 @@ import { auditSecrets } from '@/lib/security';
 import { GitHubError } from '@/lib/github';
 import { Section, Row, Diag, ConfirmSheet } from '@/components/bits';
 import { ActivityList } from '@/components/ActivityList';
-import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash, IcList, IcRefresh, IcX } from '@/components/Icons';
+import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcLockOpen, IcTrash, IcList, IcRefresh, IcX } from '@/components/Icons';
 
 export default function ControlPage() {
   const state = useOrbit();
@@ -380,7 +380,9 @@ export default function ControlPage() {
         <GlassCard padding="18px">
           <Row label="Bóveda de este dispositivo" sub={state.vaultExists ? (state.vaultUnlocked ? 'desbloqueada en esta sesión' : 'bloqueada — desbloquéala para restaurar la sesión') : 'sin crear — actívala con «Mantener en este dispositivo»'}>
             {state.vaultExists
-              ? <GlassButton icon={<IcLock size={14} />} onClick={() => openVaultSheet('unlock')}>Desbloquear</GlassButton>
+              ? (state.vaultUnlocked
+                ? <GlassButton icon={<IcLockOpen size={14} />} onClick={sealVault}>Bloquear</GlassButton>
+                : <GlassButton icon={<IcLock size={14} />} onClick={() => openVaultSheet('unlock')}>Desbloquear</GlassButton>)
               : <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcLock size={14} />} onClick={() => openVaultSheet('create')}>Crear bóveda</GlassButton>}
           </Row>
           <Row label="Borrar datos locales" sub="Prefs, chat, bóveda y token de sesión — el servidor no guarda nada">

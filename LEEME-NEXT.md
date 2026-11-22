@@ -329,6 +329,44 @@ naranja del esquema (no el del picker).
 
 Regeneración de paletas: `node scripts/fix-mcu-esm.js && node scripts/gen-m3-colors.js`.
 
+
+## Novedades v4.4 — Composer del chat, switches reales, bóveda y toasts
+
+**1. Composer del chat nuevo (ambos motores).** Área de texto multilínea con
+auto-crecimiento (hasta 132 px, 280 px expandido) y scroll interno — no
+desborda nunca. Enter (PC y móvil) salta a la línea siguiente; el envío es
+siempre explícito con el botón. Botón de expandir/contraer para ganar panorama
+hacia arriba. Límite duro de 4000 caracteres por mensaje (maxLength nativo +
+recorte defensivo) con contador «n/4000» que avisa en ámbar al 90 % y se
+pone en rojo al tope. Estilo por motor: superficie tonal M3 en bajo consumo,
+vidrio en Liquid Glass.
+
+**2. Toasts legibles en el motor de bajo consumo.** Antes usaban la
+superficie translúcida del tema glass y se perdían contra el fondo; ahora
+llevan `surface-container-high`, borde `outline-variant`, título en
+`on-surface` y color por tipo (ok=primario, info=terciario, warn=secundario,
+err=error).
+
+**3. «Reducir movimiento» ahora funciona de verdad.** Causa: @material/web
+2.5 cambió la API del switch — el estado es `selected`, no `checked` — así
+que ningún switch del motor de bajo consumo aplicaba su valor (el toggle
+no togglaba ni sincronizaba estado). Corregido MdSwitch (prop `selected`
++ lectura `selected ?? checked`). El toggle ahora fuerza el tema AMOLED
+nocturno cálido y `data-motion="reduce"` desactiva pops/escalas.
+
+**4. Bóveda: botón coherente y sin re-pedir la sesión.**
+· Si la bóveda está desbloqueada, el botón es «Bloquear» (nuevo `sealVault()`:
+  re-sella el payload y olvida la contraseña en memoria; la sesión activa no
+  se toca). Si está bloqueada, «Desbloquear».
+· Al arrancar ya no se pide desbloquear si la sesión de esta pestaña sigue
+  viva (hay token en sessionStorage): la hoja solo aparece si no hay sesión.
+
+**5. Navbar más expresiva.** Barra con borde completo, esquinas superiores
+redondeadas y margen lateral; estados de hover (capa tonal), pulsación con
+escala (spring rápido) y «pop» animado del indicador pill al activar un
+apartado; la etiqueta hace micro-fade al cambiar. Todo se desactiva con
+«Reducir movimiento».
+
 ## Rendimiento
 
 - **Export estático** (`output:'export'`): no hay servidor de app — el

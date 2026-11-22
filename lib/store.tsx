@@ -338,6 +338,17 @@ export async function createVault(pass1: string, pass2: string): Promise<boolean
   return true;
 }
 
+/* Bloquear la bóveda: re-sella el payload con el último estado y olvida la
+   contraseña en memoria. La sesión activa (token) NO se toca. */
+export function sealVault() {
+  if (!state.vaultExists || !vaultPass) return;
+  vaultSeal({ token: state.token, ai: aiSecrets(state.prefs) }, vaultPass).catch(() => { /* silencio */ });
+  sealedSig = '';
+  vaultPass = null;
+  patch({ vaultUnlocked: false });
+  pushToast('Bóveda bloqueada', 'info', 'Desbloquéala cuando quieras restaurar sus claves');
+}
+
 export function destroyVault() {
   vaultDestroy();
   vaultPass = null;
@@ -372,11 +383,16 @@ export async function boot(): Promise<void> {
   netKeep.setTarget(prefs.netkeepKbps);
   if (prefs.netkeep) netKeep.start();
 
-  /* la bóveda manda: si existe, «Recordar durante la sesión» no tiene efecto
-     ninguno — la restauración pasa por desbloquearla */
+  /* la bóveda manda: si existe y aún no hay sesión en esta pestaña, la
+     restauración pasa por desbloquearla. Si el usuario YA desbloqueó en esta
+     sesión (hay token vivo en sessionStorage), no se vuelve a pedir. */
   if (vault) {
-    patch({ vaultSheet: 'unlock' });
-    return;
+    let sTok: string | null = null;
+    try { sTok = sessionStorage.getItem('orbit.token'); } catch { /* privado */ }
+    if (!sTok && !state.vaultUnlocked) {
+      patch({ vaultSheet: 'unlock' });
+      return;
+    }
   }
   let token: string | null = null;
   try { token = sessionStorage.getItem('orbit.token'); } catch { /* privado */ }

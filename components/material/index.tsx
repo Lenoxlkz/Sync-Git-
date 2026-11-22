@@ -159,14 +159,18 @@ export function MdSwitch({ checked, disabled, className, style, 'aria-label': ar
   React.useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const h = () => { cb.current?.((el as unknown as { checked: boolean }).checked); };
+    const h = () => {
+      /* @material/web 2.5: el estado del switch es `selected` (no `checked`) */
+      const host = el as unknown as { selected?: boolean; checked?: boolean };
+      cb.current?.(Boolean(host.selected ?? host.checked));
+    };
     el.addEventListener('change', h);
     return () => el.removeEventListener('change', h);
   }, []);
   return (
     <md-switch
       ref={ref} className={className} style={style}
-      checked={checked} disabled={disabled} aria-label={ariaLabel}
+      selected={checked} disabled={disabled} aria-label={ariaLabel}
       data-orbit-md="1"
     />
   );

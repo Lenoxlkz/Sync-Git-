@@ -342,3 +342,76 @@ html[data-engine="expressive"] .toast {
   color: var(--ex-color-inverse-on-surface);
   border-radius: 999px;
 }
+
+
+/* ============ v4.4 · ajustes de bajo consumo ============ */
+
+/* Toasts: superficie tonal legible (antes casi invisibles sobre el fondo) */
+html[data-engine="expressive"] .toast {
+  background: var(--ex-color-surface-container-high);
+  border: 1px solid var(--ex-color-outline-variant);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .55);
+}
+html[data-engine="expressive"] .toast .toast-title { color: var(--ex-color-on-surface); font-weight: 700 }
+html[data-engine="expressive"] .toast .toast-msg { color: var(--ex-color-on-surface-variant) }
+html[data-engine="expressive"] .toast.t-ok .toast-ico { color: var(--ex-color-primary) }
+html[data-engine="expressive"] .toast.t-info .toast-ico { color: var(--ex-color-tertiary) }
+html[data-engine="expressive"] .toast.t-warn .toast-ico { color: var(--ex-color-secondary) }
+html[data-engine="expressive"] .toast.t-err .toast-ico { color: var(--ex-color-error) }
+
+/* Composer: superficie tonal M3, sin blur, mismo tamaño que el de glass */
+html[data-engine="expressive"] .chat-composer .cc-expand {
+  background: var(--ex-color-surface-container-high);
+  border: 1px solid var(--ex-color-outline-variant);
+  color: var(--ex-color-on-surface-variant);
+  border-radius: 999px;
+}
+html[data-engine="expressive"] .chat-composer .cc-expand:hover {
+  background: var(--ex-color-surface-container-highest);
+  color: var(--ex-color-on-surface);
+}
+html[data-engine="expressive"] .chat-composer .cc-box {
+  background: var(--ex-color-surface-container-high);
+  border: 1px solid var(--ex-color-outline-variant);
+  border-radius: 24px;
+}
+html[data-engine="expressive"] .chat-composer .cc-box:focus-within {
+  border-color: var(--ex-color-primary);
+}
+html[data-engine="expressive"] .chat-composer textarea { color: var(--ex-color-on-surface) }
+html[data-engine="expressive"] .chat-composer textarea::placeholder { color: var(--ex-color-on-surface-variant) }
+
+/* Navbar M3 más expresiva: barra con borde completo, esquinas superiores,
+   reacciones animadas (hover, pulsación con escala, pop del indicador) */
+html[data-engine="expressive"] .m3-navbar {
+  border: 1px solid var(--ex-color-outline-variant);
+  border-bottom: none;
+  border-radius: 20px 20px 0 0;
+  margin: 0 4px;
+}
+html[data-engine="expressive"] .m3-navbar button { border-radius: 18px 18px 0 0 }
+html[data-engine="expressive"] .m3-navbar button:hover:not(.on) .m3-navbar-ind {
+  background: color-mix(in srgb, var(--ex-color-on-surface) 9%, transparent);
+  color: var(--ex-color-on-surface);
+}
+html[data-engine="expressive"] .m3-navbar button:active .m3-navbar-ind {
+  transform: scale(.88);
+  transition-duration: 90ms;
+}
+html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-ind {
+  animation: m3nav-pop .4s var(--ex-spring-spatial-fast-easing, cubic-bezier(.34, 1.4, .5, 1));
+}
+@keyframes m3nav-pop {
+  0% { transform: scale(.86) }
+  55% { transform: scale(1.06) }
+  100% { transform: scale(1.02) }
+}
+html[data-engine="expressive"] .m3-navbar .m3-navbar-label { transition: color .18s ease }
+html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-label { animation: m3nav-label .3s ease }
+@keyframes m3nav-label { from { opacity: .35; transform: translateY(2px) } to { opacity: 1; transform: none } }
+
+/* Respeto a «Reducir movimiento»: sin pops ni escalas */
+html[data-motion="reduce"] .m3-navbar button.on .m3-navbar-ind,
+html[data-motion="reduce"] .m3-navbar button.on .m3-navbar-label { animation: none }
+html[data-motion="reduce"] .m3-navbar button:active .m3-navbar-ind { transform: none }

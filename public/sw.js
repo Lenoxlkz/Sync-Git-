@@ -1,10 +1,10 @@
-/* GitHub Orbit Next — service worker (PWA v4.3, iconos originales del HTML)
+/* GitHub Orbit Next — service worker (PWA v4.4, iconos originales del HTML)
    · Shell offline con red primero: tras cada despliegue la app se refresca sola.
    · BASE se deduce del scope del SW, así que funciona igual en GitHub Pages
      (usuario.github.io/Sync-Git-/) que en cualquier otro hosting.
    · BASE + _next/static/* (assets con hash) → caché primero, inmutables.
    · La API de GitHub y todo lo cross-origin NUNCA se intercepta. */
-const CACHE = 'orbit-next-v4.3';
+const CACHE = 'orbit-next-v4.4';
 const BASE = new URL(self.registration.scope).pathname;
 
 self.addEventListener('install', e => {
