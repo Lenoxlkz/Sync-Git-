@@ -347,18 +347,37 @@ html[data-engine="expressive"] .toast {
 /* ============ v4.4 · ajustes de bajo consumo ============ */
 
 /* Toasts: superficie tonal legible (antes casi invisibles sobre el fondo) */
+/* Máximo contraste M3 (estilo snackbar inverso): superficie inversa + texto
+   on-inverse; el icono va en un chip de contenedor de color garantizado */
 html[data-engine="expressive"] .toast {
-  background: var(--ex-color-surface-container-high);
-  border: 1px solid var(--ex-color-outline-variant);
+  background: var(--ex-color-inverse-surface);
+  border: 1px solid color-mix(in srgb, var(--ex-color-inverse-on-surface) 18%, transparent);
   backdrop-filter: none; -webkit-backdrop-filter: none;
-  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .55);
+  box-shadow: 0 14px 38px -12px rgba(0, 0, 0, .6);
+  padding: 13px 16px;
 }
-html[data-engine="expressive"] .toast .toast-title { color: var(--ex-color-on-surface); font-weight: 700 }
-html[data-engine="expressive"] .toast .toast-msg { color: var(--ex-color-on-surface-variant) }
-html[data-engine="expressive"] .toast.t-ok .toast-ico { color: var(--ex-color-primary) }
-html[data-engine="expressive"] .toast.t-info .toast-ico { color: var(--ex-color-tertiary) }
-html[data-engine="expressive"] .toast.t-warn .toast-ico { color: var(--ex-color-secondary) }
-html[data-engine="expressive"] .toast.t-err .toast-ico { color: var(--ex-color-error) }
+html[data-engine="expressive"] .toast .toast-title {
+  color: var(--ex-color-inverse-on-surface); font-weight: 800; font-size: 14.5px;
+}
+html[data-engine="expressive"] .toast .toast-msg {
+  color: color-mix(in srgb, var(--ex-color-inverse-on-surface) 82%, transparent); font-size: 13px;
+}
+html[data-engine="expressive"] .toast .toast-ico {
+  width: 26px; height: 26px; border-radius: 999px; display: inline-flex;
+  align-items: center; justify-content: center; flex: 0 0 auto;
+}
+html[data-engine="expressive"] .toast.t-ok .toast-ico {
+  background: var(--ex-color-primary-container); color: var(--ex-color-on-primary-container);
+}
+html[data-engine="expressive"] .toast.t-info .toast-ico {
+  background: var(--ex-color-tertiary-container); color: var(--ex-color-on-tertiary-container);
+}
+html[data-engine="expressive"] .toast.t-warn .toast-ico {
+  background: var(--ex-color-secondary-container); color: var(--ex-color-on-secondary-container);
+}
+html[data-engine="expressive"] .toast.t-err .toast-ico {
+  background: var(--ex-color-error-container); color: var(--ex-color-on-error-container);
+}
 
 /* Composer: superficie tonal M3, sin blur, mismo tamaño que el de glass */
 html[data-engine="expressive"] .chat-composer .cc-expand {
@@ -414,4 +433,45 @@ html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-label { animation
 /* Respeto a «Reducir movimiento»: sin pops ni escalas */
 html[data-motion="reduce"] .m3-navbar button.on .m3-navbar-ind,
 html[data-motion="reduce"] .m3-navbar button.on .m3-navbar-label { animation: none }
+html[data-motion="reduce"] .m3-navbar button:active .m3-navbar-ind { transform: none }
+
+/* ============ v4.5 · navbar más expresiva ============ */
+html[data-engine="expressive"] .m3-navbar {
+  animation: m3nav-in .5s cubic-bezier(.34, 1.4, .5, 1) both;
+}
+@keyframes m3nav-in { from { transform: translateY(16px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+/* pill activa: borde luminoso + elevación */
+html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-ind {
+  border: 1px solid color-mix(in srgb, var(--ex-color-primary) 60%, var(--ex-color-outline-variant));
+  box-shadow: 0 3px 14px -3px color-mix(in srgb, var(--ex-color-primary) 50%, transparent),
+              inset 0 1px 0 color-mix(in srgb, var(--ex-color-on-primary) 30%, transparent);
+}
+/* pill de hover: borde tenue */
+html[data-engine="expressive"] .m3-navbar button:hover:not(.on) .m3-navbar-ind {
+  border: 1px solid var(--ex-color-outline-variant);
+}
+/* pulsación más notoria con rebote */
+html[data-engine="expressive"] .m3-navbar button:active .m3-navbar-ind {
+  transform: scale(.84);
+  transition-duration: 90ms;
+}
+/* pop del icono al activar el apartado */
+html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-ind svg {
+  animation: m3nav-ico .45s cubic-bezier(.34, 1.6, .5, 1);
+}
+@keyframes m3nav-ico {
+  0% { transform: scale(.72) rotate(-6deg) }
+  60% { transform: scale(1.12) rotate(2deg) }
+  100% { transform: scale(1) rotate(0) }
+}
+/* micro-shine del label al cambiar */
+html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-label {
+  animation: m3nav-label .32s ease;
+}
+html[data-motion="reduce"] .m3-navbar,
+html[data-motion="reduce"] .m3-navbar button.on .m3-navbar-ind,
+html[data-motion="reduce"] .m3-navbar button.on .m3-navbar-ind svg,
+html[data-motion="reduce"] .m3-navbar button.on .m3-navbar-label,
+html[data-motion="reduce"] .toast { animation: none }
 html[data-motion="reduce"] .m3-navbar button:active .m3-navbar-ind { transform: none }

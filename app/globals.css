@@ -177,7 +177,7 @@ a { color: inherit; text-decoration: none }
 
 /* ---------- toasts ---------- */
 .toast-stack {
-  position: fixed; top: calc(14px + env(safe-area-inset-top, 0px)); right: 14px; z-index: 90;
+  position: fixed; top: calc(60px + env(safe-area-inset-top, 0px)); right: 14px; z-index: 90;
   display: flex; flex-direction: column; gap: 8px; max-width: min(380px, calc(100vw - 28px));
 }
 .toast {
@@ -604,7 +604,9 @@ html[data-amoled="1"] #aurora { display: none }
 /* topbar en pantallas estrechas: píldora de conexión solo icono */
 @media (max-width: 560px) {
   .conn-pill span { display: none }
-  .conn-pill { padding: 7px 9px }
+  /* avatar de GitHub en el pill de perfil del topbar */
+.conn-ava { width: 19px; height: 19px; border-radius: 999px; object-fit: cover; border: 1.5px solid var(--border); flex: 0 0 auto; background: var(--surface-2) }
+.conn-pill { padding: 7px 9px }
   .tb-right { gap: 6px }
 }
 

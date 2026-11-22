@@ -211,7 +211,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <OrbitLogo size={26} />
           <span>
             <b>GitHub Orbit</b>
-            <small>Centro de mando · v4.4</small>
+            <small>Centro de mando · v4.5</small>
           </span>
           </Link>
           <div className="tb-title"><h1>{current.label}</h1></div>
@@ -225,7 +225,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             ) : null}
             <GlassButton size="sm" icon={<IcSearch size={15} />} aria-label="Buscar repositorios" onClick={() => setSearchOpen(true)} />
             <Link href="/control/" className={`conn-pill slim${state.connected ? ' on' : ''}`}>
-              {state.connected ? <IcUser size={13} /> : <IcKey size={13} />}
+              {state.connected && state.user?.avatar_url
+                ? <img className="conn-ava" src={state.user.avatar_url} alt="" referrerPolicy="no-referrer" />
+                : (state.connected ? <IcUser size={13} /> : <IcKey size={13} />)}
               <span>{state.connected ? '@' + state.user?.login : 'Sin conexión'}</span>
             </Link>
           </div>

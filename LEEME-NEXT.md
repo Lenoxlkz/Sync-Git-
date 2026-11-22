@@ -367,6 +367,30 @@ escala (spring rápido) y «pop» animado del indicador pill al activar un
 apartado; la etiqueta hace micro-fade al cambiar. Todo se desactiva con
 «Reducir movimiento».
 
+
+## Mejoras v4.5 — Legibilidad de notificaciones y navbar expresiva
+
+**1. Toasts de máximo contraste (bajo consumo y AMOLED).** Siguen el patrón
+snackbar inverso de Material 3: superficie `inverse-surface` (clara en tema
+oscuro/AMOLED, oscura en claro), título en `on-inverse` a peso 800, mensaje al
+82 % y el icono dentro de un chip de color de contenedor garantizado
+(primary/secondary/tertiary/error-container según el tipo). Verificado en
+oscuro violeta y AMOLED naranja.
+
+**2. Notificaciones más abajo en Liquid Glass.** La pila de toasts pasa de 14 px
+a 60 px desde arriba — ya no se monta sobre la cabecera ni se confunde con ella
+(aplica a ambos motores).
+
+**3. Navbar más expresiva.** Además del borde completo de v4.4: pill activa con
+borde luminoso del acento + elevación interior, pill de hover con borde tenue,
+pulsación más profunda (escala .84) y pop del icono al activar un apartado,
+entrada animada de la barra al cargar. Todo desactivado con «Reducir
+movimiento».
+
+**4. Foto de perfil de GitHub en el topbar.** El pill de perfil (junto a la lupa
+y el estado de red) muestra ahora el avatar real de la cuenta conectada,
+redondo y con borde; sin sesión vuelve al icono de llave.
+
 ## Rendimiento
 
 - **Export estático** (`output:'export'`): no hay servidor de app — el
