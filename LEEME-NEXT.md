@@ -391,6 +391,30 @@ movimiento».
 y el estado de red) muestra ahora el avatar real de la cuenta conectada,
 redondo y con borde; sin sesión vuelve al icono de llave.
 
+
+## Modo Simple en «Reducir movimiento» (v4.6)
+
+El público pidió algo «simple, sin distracciones»: el toggle «Reducir
+movimiento» ya no activa la noche AMOLED cálida — ahora es el **Modo Simple**
+clásico, monocromo:
+
+· **Claro**: fondo blanco y texto negro. **Oscuro**: fondo negro y texto blanco.
+· El tema lo sigue decidiendo el mismo selector **Claro / Oscuro / Auto** de
+  Control Center, también dentro del Modo Simple — dos temas en el mismo modo,
+  cambiables en cualquier momento.
+· Con «Auto», el sistema operativo manda: la app detecta
+  `prefers-color-scheme` y **cambia sola** cuando el dispositivo alterna entre
+  claro y oscuro (oyente en vivo, también en el Modo Simple).
+· Sin acentos de color ni aurora: chips, botones, navbar y toasts quedan en
+  escala de grises; los botones principales se invierten (negro sobre blanco /
+  blanco sobre negro). Solo se conserva la señal de error/aviso para no perder
+  funcionalidad.
+· Las animaciones siguen reducidas (pop/scale de la navbar, entrada de la barra
+  y animación de toasts se desactivan), que es la función original del toggle.
+
+El antiguo esquema AMOLED deja de activarse (sus estilos generados quedan sin
+uso hasta una limpieza futura del generador de paletas).
+
 ## Rendimiento
 
 - **Export estático** (`output:'export'`): no hay servidor de app — el

@@ -171,29 +171,38 @@ export function effectiveEngine(p: Pick<Prefs, 'reduceMotion' | 'themeEngine'>):
 export function applyAppearance(p: Prefs) {
   const html = document.documentElement;
   const sysDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  /* «Reducir movimiento» fuerza el modo oscuro AMOLED: negro puro, sin aurora;
-     al desactivarlo se vuelve al tema guardado y AMOLED deja de estar disponible. */
-  let theme: 'dark' | 'light';
-  if (p.reduceMotion) {
-    theme = 'dark';
-    html.dataset.amoled = '1';
-  } else {
-    theme = p.theme === 'auto' ? (sysDark ? 'dark' : 'light') : p.theme;
-    delete html.dataset.amoled;
-  }
+  /* El tema lo decide SIEMPRE la preferencia del usuario (auto = detección del
+     sistema), también dentro de «Reducir movimiento»: el Modo Simple clásico
+     tiene sus dos temas — blanco/negro (claro) y negro/blanco (oscuro) —
+     cambiables desde el mismo selector Claro/Oscuro/Auto de Control Center.
+     El antiguo AMOLED cálido ya no existe. */
+  const theme: 'dark' | 'light' = p.theme === 'auto' ? (sysDark ? 'dark' : 'light') : p.theme;
+  delete html.dataset.amoled;
   html.dataset.theme = theme;
   /* Expressive (Material) usa la clase .dark en un ancestro para su esquema */
   html.classList.toggle('dark', theme === 'dark');
   html.dataset.engine = effectiveEngine(p);
-  /* El acento gobierna la paleta M3 del motor de bajo consumo: cada acento del
-     picker tiene su esquema HCT completo (claro y oscuro) en expressive-colors.css. */
+  /* El acento gobierna la paleta M3 del motor de bajo consumo; en Modo Simple
+     lo neutraliza el CSS ([data-simple="1"]) sin perder la preferencia. */
   const accentIdx = ACCENTS.indexOf(p.accent);
   if (accentIdx >= 0) html.dataset.accent = ACCENT_IDS[accentIdx];
   else delete html.dataset.accent;
-  /* En AMOLED el acento es el naranja vivo del esquema nocturno (no el del picker) */
-  html.style.setProperty('--orbit-accent', p.reduceMotion ? 'var(--ex-color-primary)' : p.accent);
-  if (p.reduceMotion) html.dataset.motion = 'reduce';
-  else delete html.dataset.motion;
+  html.style.setProperty('--orbit-accent', p.accent);
+  if (p.reduceMotion) {
+    html.dataset.motion = 'reduce';   // menos animación…
+    html.dataset.simple = '1';        // …y Modo Simple: clásico monocromo
+  } else {
+    delete html.dataset.motion;
+    delete html.dataset.simple;
+  }
+}
+
+/* Con tema «auto», un cambio claro/oscuro del sistema re-aplica la apariencia
+   al vuelo (incluido el Modo Simple). */
+if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+    if (state.prefs.theme === 'auto') applyAppearance(state.prefs);
+  });
 }
 
 /* Revalida los scopes del token: una petición a /user devuelve X-OAuth-Scopes
