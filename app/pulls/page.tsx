@@ -13,7 +13,7 @@ import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, RepoPicker, 
 import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { PatchView } from '@/components/diff';
 import { Md } from '@/lib/md';
-import { IcPlus, IcExternal, IcMerge, IcX, IcPR, IcCheck, IcAlert, IcBranch } from '@/components/Icons';
+import { IcPlus, IcExternal, IcMerge, IcX, IcPR, IcCheck, IcAlert, IcBranch, IcRotate } from '@/components/Icons';
 
 export default function PullsPage() {
   const { connected, scopes } = useOrbit();
@@ -249,6 +249,20 @@ export default function PullsPage() {
                 </div>
               </div>
             ) : null}
+            {detail.state === 'closed' && !detail.merged ? (
+              <div className="sheet-actions" style={{ justifyContent: 'flex-start' }}>
+                <GlassButton icon={<IcRotate size={13} />} disabled={busy} onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await gh.prSetState(detail.base.repo.full_name, detail.number, 'open');
+                    logAct('rotate', 'PR reabierto', '#' + detail.number);
+                    pushToast('PR reabierto', 'ok', '#' + detail.number);
+                    setDetail(null); load(stateF);
+                  } catch (e) { pushToast('No se pudo reabrir', 'err', e instanceof Error ? e.message : ''); }
+                  finally { setBusy(false); }
+                }}>Reabrir PR</GlassButton>
+              </div>
+            ) : null}
           </>
         ) : null}
       </GlassSheet>
@@ -291,8 +305,8 @@ export default function PullsPage() {
             Crear PR
           </GlassButton>
         </div>
-        <BranchPicker open={pickHead} onClose={() => setPickHead(false)} repo={cRepo || null} onPick={setCHead} />
-        <BranchPicker open={pickBase} onClose={() => setPickBase(false)} repo={cRepo || null} onPick={setCBase} />
+        <BranchPicker open={pickHead} onClose={() => setPickHead(false)} repo={cRepo || null} onPick={setCHead} title="Rama origen (head)" />
+        <BranchPicker open={pickBase} onClose={() => setPickBase(false)} repo={cRepo || null} onPick={setCBase} title="Rama destino (base)" />
       </GlassSheet>
 
       <ConfirmSheet

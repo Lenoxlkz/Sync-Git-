@@ -20,7 +20,7 @@ export function redact(s: string | null | undefined): string {
 }
 
 /* Archivos que suelen contener credenciales: se excluyen por defecto al subir */
-export const SECRET_FILE_RE = /(^|\/)(\.env(\..*)?|.*\.pem|.*\.key|id_rsa.*|id_ecdsa.*|id_ed25519.*|credentials.*|\.npmrc|\.netrc|\.htpasswd|secrets?(\..*)?|.*\.(p12|pfx|kdbx|jks|keystore))$/i;
+export const SECRET_FILE_RE = /(^|\/)(\.env(\..*)?|[^/]*\.env|.*\.pem|.*\.key|id_rsa.*|id_ecdsa.*|id_ed25519.*|credentials.*|\.npmrc|\.netrc|\.htpasswd|secrets?(\..*)?|.*\.(p12|pfx|kdbx|jks|keystore))$/i;
 
 export const BIN_EXT = new Set([
   'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif', 'ico', 'bmp', 'pdf', 'zip', 'gz', 'tar', 'rar', '7z',

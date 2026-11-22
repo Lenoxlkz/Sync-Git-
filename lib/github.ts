@@ -108,7 +108,12 @@ export async function req<T>(
 
   if (!res.ok) {
     let gm = '';
-    try { gm = ((await res.json()) as { message?: string }).message || ''; } catch { /* cuerpo no-JSON */ }
+    try {
+      const body = (await res.json()) as { message?: string; errors?: Array<{ message?: string }> };
+      gm = body.message || '';
+      const extra = (body.errors || []).map(e => e.message).filter((m): m is string => !!m).slice(0, 2);
+      if (extra.length && !gm.includes(extra[0])) gm += (gm ? ' — ' : '') + extra.join('; ');
+    } catch { /* cuerpo no-JSON */ }
     if (res.status === 401) {
       throw new GitHubError('Token inválido o expirado (401)' + (gm ? ` — GitHub responde: «${gm}»` : ''), 401, gm);
     }

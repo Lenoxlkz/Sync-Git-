@@ -16,7 +16,7 @@ import { auditSecrets } from '@/lib/security';
 import { GitHubError } from '@/lib/github';
 import { Section, Row, Diag, ConfirmSheet } from '@/components/bits';
 import { ActivityList } from '@/components/ActivityList';
-import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash, IcList, IcRefresh } from '@/components/Icons';
+import { IcShield, IcSun, IcMoon, IcZap, IcLock, IcTrash, IcList, IcRefresh, IcX } from '@/components/Icons';
 
 export default function ControlPage() {
   const state = useOrbit();
@@ -308,6 +308,7 @@ export default function ControlPage() {
               saved={!!p.aiKey}
               placeholder={prov.keyHint}
               onCommit={v => { setPrefs({ aiKey: v }); pushToast('Clave guardada', 'ok', 'No se volverá a mostrar'); }}
+              onRemove={() => { setPrefs({ aiKey: '' }); pushToast('Clave quitada', 'info', 'La clave se eliminó de este dispositivo'); }}
             />
           </Row>
           <Row label="URL Base (opcional)" sub="Déjala vacía para usar la oficial del proveedor">
@@ -319,6 +320,7 @@ export default function ControlPage() {
                 saved={!!p.aiGatewayKey}
                 placeholder="clave del gateway"
                 onCommit={v => { setPrefs({ aiGatewayKey: v }); pushToast('Clave adicional guardada', 'ok', 'No se volverá a mostrar'); }}
+                onRemove={() => { setPrefs({ aiGatewayKey: '' }); pushToast('Clave adicional quitada', 'info', 'La clave se eliminó de este dispositivo'); }}
               />
             </Row>
           ) : null}
@@ -377,7 +379,9 @@ export default function ControlPage() {
       <Section title="Bóveda y datos locales" sub="Cifrado AES-256-GCM · nada sale de este dispositivo">
         <GlassCard padding="18px">
           <Row label="Bóveda de este dispositivo" sub={state.vaultExists ? (state.vaultUnlocked ? 'desbloqueada en esta sesión' : 'bloqueada — desbloquéala para restaurar la sesión') : 'sin crear — actívala con «Mantener en este dispositivo»'}>
-            {state.vaultExists ? <GlassButton icon={<IcLock size={14} />} onClick={() => openVaultSheet('unlock')}>Desbloquear</GlassButton> : null}
+            {state.vaultExists
+              ? <GlassButton icon={<IcLock size={14} />} onClick={() => openVaultSheet('unlock')}>Desbloquear</GlassButton>
+              : <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcLock size={14} />} onClick={() => openVaultSheet('create')}>Crear bóveda</GlassButton>}
           </Row>
           <Row label="Borrar datos locales" sub="Prefs, chat, bóveda y token de sesión — el servidor no guarda nada">
             <GlassButton icon={<IcTrash size={14} />} destructive onClick={() => setWipe(true)}>Borrar todo</GlassButton>
@@ -392,6 +396,7 @@ export default function ControlPage() {
 
       <ConfirmSheet
         open={wipe} onClose={() => setWipe(false)}
+        typeTo="BORRAR"
         title="Borrar datos locales"
         text="Se eliminarán preferencias, conversación, bóveda y token de sesión de este dispositivo. Tus repos en GitHub no se tocan."
         confirmLabel="Borrar todo"
@@ -455,8 +460,8 @@ function EyeIcon({ off }: { off?: boolean }) {
     · tocar el ojo NO guarda: el mousedown con preventDefault evita el blur;
     · confirmar (Enter o salir del campo) guarda y vacía el campo;
     · la clave guardada jamás se renderiza — solo se puede reemplazar. */
-function KeyField({ saved, placeholder, onCommit }: {
-  saved: boolean; placeholder: string; onCommit: (v: string) => void;
+function KeyField({ saved, placeholder, onCommit, onRemove }: {
+  saved: boolean; placeholder: string; onCommit: (v: string) => void; onRemove?: () => void;
 }) {
   const [draft, setDraft] = useState('');
   const [show, setShow] = useState(false);
@@ -476,6 +481,11 @@ function KeyField({ saved, placeholder, onCommit }: {
         aria-label={saved ? 'Reemplazar clave guardada' : 'Nueva clave de API'}
         tint="var(--orbit-accent)"
       />
+      {saved && onRemove ? (
+        <button type="button" className="ibtn" aria-label="Quitar clave guardada" title="Quitar clave guardada"
+          onClick={() => { onRemove(); }}
+        ><IcX size={14} /></button>
+      ) : null}
       <button
         type="button" className="ibtn" style={{ opacity: draft ? 1 : .4 }}
         aria-label={show ? 'Ocultar clave' : 'Mostrar clave'}

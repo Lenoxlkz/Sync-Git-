@@ -31,6 +31,7 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
   const [delRel, setDelRel] = useState<GHRelease | null>(null);
   const [delTag, setDelTag] = useState<GHTag | null>(null);
   const [delAsset, setDelAsset] = useState<{ id: number; name: string } | null>(null);
+  const [delBranchName, setDelBranchName] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && repo) { setTab('info'); setErr(''); }
@@ -114,6 +115,22 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
     finally { setDelTag(null); }
   }
 
+  function delBranch(name: string) {
+    if (!repo) return;
+    setDelBranchName(name);
+  }
+
+  async function doDelBranch() {
+    if (!repo || !delBranchName) return;
+    try {
+      await gh.branchDelete(repo.full_name, delBranchName);
+      logAct('trash', 'Rama eliminada', delBranchName + ' @ ' + repo.name);
+      pushToast('Rama eliminada', 'ok', delBranchName);
+      void reloadTab('branches');
+    } catch (e) { pushToast('No se pudo eliminar la rama', 'err', m(e)); }
+    finally { setDelBranchName(null); }
+  }
+
   async function doDelAsset() {
     if (!repo || !delAsset) return;
     try {
@@ -131,21 +148,13 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
       await createBranch(repo.full_name, newBranch.trim(), repo.default_branch);
       logAct('branch', 'Rama creada', newBranch.trim() + ' @ ' + repo.name);
       pushToast('Rama creada', 'ok', newBranch.trim());
-      setBranches(null); setNewBranch('');
-      void loadTab('branches');
+      setNewBranch('');
+      void reloadTab('branches');
     } catch (e) { pushToast('No se pudo crear la rama', 'err', m(e)); }
   }
 
-  async function delBranch(name: string) {
-    if (!repo) return;
-    try {
-      await gh.branchDelete(repo.full_name, name);
-      logAct('trash', 'Rama eliminada', name + ' @ ' + repo.name);
-      pushToast('Rama eliminada', 'ok', name);
-      setBranches(null);
-      void loadTab('branches');
-    } catch (e) { pushToast('No se pudo eliminar la rama', 'err', m(e)); }
-  }
+  /* el borrado de ramas pasa por ConfirmSheet (doDelBranch): nada destructivo
+     sin confirmación explícita escribiendo el nombre */
 
   if (!repo) return <GlassSheet open={false} onClose={onClose} aria-label="Ficha" />;
 
@@ -207,7 +216,7 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <GlassInput placeholder="nueva-rama" value={newBranch} onChange={e => setNewBranch(e.target.value)} className="mono" aria-label="Nueva rama" tint="var(--orbit-accent)" />
-            <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcPlus size={14} />} disabled={!newBranch.trim()} onClick={addBranch} />
+            <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcPlus size={14} />} disabled={!newBranch.trim()} onClick={addBranch} aria-label="Crear rama" />
           </div>
         </div>
       ) : null}
@@ -286,6 +295,13 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
             text={'Se elimina la release en GitHub (no el código ni la rama). El tag seguirá existiendo: bórralo también desde la pestaña Tags si quieres.'}
             confirmLabel="Eliminar release" typeTo={delRel?.tag_name}
             onConfirm={doDelRel}
+          />
+          <ConfirmSheet
+            open={!!delBranchName} onClose={() => setDelBranchName(null)}
+            title={'Eliminar rama ' + (delBranchName || '')}
+            text={'Se elimina la rama en GitHub (su commits integrados se conservan en las demás ramas; los sin fusionar se pierden). Escribe su nombre para confirmar.'}
+            confirmLabel="Eliminar rama" typeTo={delBranchName || ''}
+            onConfirm={doDelBranch}
           />
           <ConfirmSheet
             open={!!delTag} onClose={() => setDelTag(null)}

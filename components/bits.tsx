@@ -103,7 +103,7 @@ export function RepoPicker({ open, onClose, onPick }: { open: boolean; onClose: 
 }
 
 /* Selector de rama */
-export function BranchPicker({ open, onClose, repo, onPick }: { open: boolean; onClose: () => void; repo: string | null; onPick: (b: string) => void }) {
+export function BranchPicker({ open, onClose, repo, onPick, title = 'Rama destino' }: { open: boolean; onClose: () => void; repo: string | null; onPick: (b: string) => void; title?: string }) {
   const [branches, setBranches] = useState<Array<{ name: string }> | null>(null);
   const [err, setErr] = useState('');
   useEffect(() => {
@@ -117,7 +117,7 @@ export function BranchPicker({ open, onClose, repo, onPick }: { open: boolean; o
   return (
     <GlassSheet open={open} onClose={onClose} aria-label="Elegir rama">
       <div className="sheet-head">
-        <h3>Rama destino {repo ? '· ' + repo : ''}</h3>
+        <h3>{title} {repo ? '· ' + repo : ''}</h3>
         <GlassButton icon={<IcX size={15} />} aria-label="Cerrar" size="sm" onClick={onClose} />
       </div>
       {err ? <Diag text={err} /> : null}

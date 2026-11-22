@@ -39,7 +39,7 @@ export default function ExplorerPage() {
     if (repo && branch && files.length && plan && !analyzing && !committing) void runAnalyze();
   }), [repo, branch, files, plan, analyzing, committing]);
   const [includeSecrets, setIncludeSecrets] = useState(false);
-  const [secretCount, setSecretCount] = useState(0);
+
   const [invalidCount, setInvalidCount] = useState(0);
   const [cmpOpen, setCmpOpen] = useState(false);
   const [cmpEntry, setCmpEntry] = useState<(FileEntry & { remoteSha?: string }) | null>(null);
@@ -172,6 +172,9 @@ export default function ExplorerPage() {
   }
   /* rutas finales actuales (para marcar duplicadas en el editor) */
   const finalPaths = useMemo(() => files.map(f => (f.customPath ? normPath(f.customPath) : autoPath(f))), [files, stripRoot, detectedRoot]);
+  /* el aviso de secretos SIEMPRE refleja la cola actual (suma tandas y sobrevive
+     a nuevas tandas sin secretos y a descartes) */
+  const secretCount = useMemo(() => files.filter(f => f.secret).length, [files]);
 
   function addEntries(list: FileEntry[]) {
     const clean: FileEntry[] = [];
@@ -183,8 +186,9 @@ export default function ExplorerPage() {
       if (secret) secrets++;
       clean.push({ ...e, path: p, secret });
     }
-    setInvalidCount(invalid);
-    setSecretCount(secrets);
+    setInvalidCount(prev => prev + invalid);
+    /* secretCount se deriva de la cola (ver useMemo) — aquí no se toca para no
+       reiniciar el aviso cuando una tanda nueva no trae secretos */
     if (invalid) pushToast(invalid + ' archivo(s) descartado(s)', 'info', 'Rutas inválidas para Git (con «..», vacías o absolutas)');
     if (secrets) pushToast(secrets + ' archivo(s) marcados como posibles secretos', 'warn' as 'info', 'Se excluyen por defecto; actívalos con «Incluir secretos» si de verdad quieres enviarlos');
     setFiles(prev => {
@@ -265,7 +269,7 @@ export default function ExplorerPage() {
         pushToast('Commit verificado', 'ok', `${res.uploaded} subidos · ${res.skipped} sin cambios · ${res.deleted} borrados`);
         /* flujo limpio: tras subir se vacían mensaje, cola y repo elegido */
         setMessage(''); setFiles([]); setRepo(''); setBranch(''); setPlan(null);
-        setIncludeSecrets(false); setSecretCount(0); setInvalidCount(0);
+        setIncludeSecrets(false); setInvalidCount(0);
       } else pushToast('Commit con observaciones', 'err', res.problems[0]);
     } catch (e) {
       setErr(e instanceof GitHubError ? e.message : 'error al subir');

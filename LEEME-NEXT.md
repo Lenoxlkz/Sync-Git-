@@ -1,4 +1,4 @@
-# Orbit Next v4.0 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
+# Orbit Next v4.1 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -214,6 +214,46 @@ háptica y título vivo con la cuota.**
 - **Descartar archivos antes de subir**: botón en cada fila de «Ruta de
   destino» y columna «Quitar» en el árbol organizado del plan — saca el
   archivo de la cola y del plan sin re-analizar lo demás.
+
+
+## Novedades v4.1 — Auditoría E2E completa del sitio
+
+Recorrido funcional de TODAS las páginas y funciones contra la API real
+(repositorio de pruebas `orbit-test-lab`), con este resultado:
+
+**Corregidos (bugs reales encontrados al probar)**
+- Eliminar rama borraba al primer clic sin confirmación: ahora exige
+  confirmación escribiendo el nombre de la rama (como eliminar repo/tag/release).
+- Crear rama dejaba la lista desactualizada (stale closure de la recarga).
+- El aviso de «secretos excluidos» se reiniciaba al añadir más tandas de
+  archivos (p. ej. tras importar un ZIP): ahora se deriva siempre de la cola.
+- La bóveda no ofrecía crearse estando conectado (había que desconectarse a
+  ciegas): la fila de Bóveda ofrece ahora «Crear bóveda» también conectado.
+
+**Mejoras**
+- `config.env` y cualquier `*.env` se tratan como posibles credenciales
+  (excluidos por defecto, incluyibles a propósito).
+- Los errores 422 de GitHub ahora muestran el detalle real («No commits between
+  main and pr-rama», «A pull request already exists»…) en vez de un genérico.
+- Los selectores de rama del asistente de PR se titulan «Rama origen (head)» y
+  «Rama destino (base)» (antes ambos decían lo mismo y se confundían).
+- Botón «Reabrir PR» en PRs cerrados sin fusionar (simétrico con «Reabrir» de
+  los issues).
+- Botón «Quitar clave» para eliminar una clave API guardada sin borrar todo.
+- «Borrar datos locales» exige escribir BORRAR antes de ejecutarse.
+- Accesibilidad: aria-label en «Crear rama», «Editar archivo» y demás botones
+  de icono que carecían de etiqueta.
+
+**Probado y funcionando (sin cambios necesarios)**
+Subida delta con verificación SHA (textos, binarios y ZIP64), rutas
+específicas, diff local-vs-repo, sincronizar espejo, subida forzada, descartar
+archivos, releases con modo compatible, eliminar release/tag/adjunto, crear
+tags, crear/visibilidad/fork/eliminar repositorios, PRs (crear, comentar,
+revisar, fusionar, cerrar, reabrir), issues (ciclo completo + editar),
+Code Explorer (árbol, visor con resaltado, búsqueda, edición con commit real,
+comparador de ramas), bóveda AES-256 (crear, bloquear, desbloquear, restaurar),
+reemplazo de token con verificación, NetKeep EN VIVO, motores glass/expressive
+y temas claro/oscuro, borrado local con confirmación.
 
 ## Rendimiento
 
