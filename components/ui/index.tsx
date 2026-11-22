@@ -19,9 +19,6 @@ import {
 } from '@/components/material';
 import { Card as ExCard } from '@/components/expressive/card';
 import { Dialog, DialogContent } from '@/components/expressive/dialog';
-import {
-  NavigationBar as ExNavBar, NavigationBarItem as ExNavBarItem,
-} from '@/components/expressive/navigation-bar';
 
 export type Engine = 'glass' | 'expressive';
 const EngineCtx = createContext<Engine>('glass');
@@ -215,16 +212,16 @@ export function AppNav({ items, activeIndex, onChange, 'aria-label': ariaLabel }
     return <GlassNav items={items} activeIndex={activeIndex} onChange={onChange} aria-label={ariaLabel} />;
   }
   return (
-    <ExNavBar aria-label={ariaLabel} className="exp-navbar">
+    /* Navbar M3 Expressive propia: item activo con indicador pill tonal
+       (secondary-container) + etiqueta en color primario, spring en el cambio. */
+    <nav className="m3-navbar" aria-label={ariaLabel}>
       {items.map((n, i) => (
-        <ExNavBarItem
-          key={n.label}
-          render={<button type="button" onClick={() => onChange(i)} aria-label={n.label} />}
-          icon={n.icon}
-          label={n.label}
-          active={i === activeIndex}
-        />
+        <button key={n.label} type="button" className={i === activeIndex ? 'on' : ''}
+          onClick={() => onChange(i)} aria-label={n.label} aria-current={i === activeIndex ? 'page' : undefined}>
+          <span className="m3-navbar-ind">{n.icon}</span>
+          <span className="m3-navbar-label">{n.label}</span>
+        </button>
       ))}
-    </ExNavBar>
+    </nav>
   );
 }

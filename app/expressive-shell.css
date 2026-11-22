@@ -39,6 +39,50 @@ html[data-engine="expressive"] md-elevated-button {
   font-weight: 600;
 }
 
+/* El reset universal de la app (* { padding: 0 }) aplasta el padding del HOST
+   de los botones oficiales (los estilos internos viven en el shadow): aquí se
+   restaura con los tokens de espacio de cada variante. */
+html[data-engine="expressive"] md-filled-button {
+  padding-inline-start: var(--md-filled-button-leading-space, 24px);
+  padding-inline-end: var(--md-filled-button-trailing-space, 24px);
+}
+html[data-engine="expressive"] md-filled-button[has-icon]:not([trailing-icon]) {
+  padding-inline-start: var(--md-filled-button-with-leading-icon-leading-space, 16px);
+  padding-inline-end: var(--md-filled-button-with-leading-icon-trailing-space, 16px);
+}
+html[data-engine="expressive"] md-filled-tonal-button {
+  padding-inline-start: var(--md-filled-tonal-button-leading-space, 24px);
+  padding-inline-end: var(--md-filled-tonal-button-trailing-space, 24px);
+}
+html[data-engine="expressive"] md-filled-tonal-button[has-icon]:not([trailing-icon]) {
+  padding-inline-start: var(--md-filled-tonal-button-with-leading-icon-leading-space, 16px);
+  padding-inline-end: var(--md-filled-tonal-button-with-leading-icon-trailing-space, 16px);
+}
+html[data-engine="expressive"] md-text-button {
+  padding-inline-start: var(--md-text-button-leading-space, 12px);
+  padding-inline-end: var(--md-text-button-trailing-space, 12px);
+}
+html[data-engine="expressive"] md-text-button[has-icon]:not([trailing-icon]) {
+  padding-inline-start: var(--md-text-button-with-leading-icon-leading-space, 12px);
+  padding-inline-end: var(--md-text-button-with-leading-icon-trailing-space, 12px);
+}
+html[data-engine="expressive"] md-outlined-button {
+  padding-inline-start: var(--md-outlined-button-leading-space, 24px);
+  padding-inline-end: var(--md-outlined-button-trailing-space, 24px);
+}
+html[data-engine="expressive"] md-outlined-button[has-icon]:not([trailing-icon]) {
+  padding-inline-start: var(--md-outlined-button-with-leading-icon-leading-space, 16px);
+  padding-inline-end: var(--md-outlined-button-with-leading-icon-trailing-space, 16px);
+}
+html[data-engine="expressive"] md-elevated-button {
+  padding-inline-start: var(--md-elevated-button-leading-space, 24px);
+  padding-inline-end: var(--md-elevated-button-trailing-space, 24px);
+}
+html[data-engine="expressive"] md-elevated-button[has-icon]:not([trailing-icon]) {
+  padding-inline-start: var(--md-elevated-button-with-leading-icon-leading-space, 16px);
+  padding-inline-end: var(--md-elevated-button-with-leading-icon-trailing-space, 16px);
+}
+
 html[data-engine="expressive"] md-switch {
   --md-switch-track-width: 50px;
   --md-switch-track-height: 30px;
@@ -54,14 +98,45 @@ html[data-engine="expressive"] .tb-right {
   gap: 4px;
 }
 html[data-engine="expressive"] .tb-right md-text-button {
-  --md-text-button-with-icon-horizontal-padding: 10px;
   --md-text-button-label-text-size: 13px;
   --md-filled-button-label-text-size: 13px;
+  --md-text-button-leading-space: 10px;
+  --md-text-button-trailing-space: 10px;
+  --md-text-button-with-leading-icon-leading-space: 8px;
+  --md-text-button-with-leading-icon-trailing-space: 8px;
 }
-html[data-engine="expressive"] .tb-right md-icon-button,
-html[data-engine="expressive"] .tb-right md-filled-tonal-icon-button {
-  --md-icon-button-size: 36px;
-  --md-filled-tonal-icon-button-size: 36px;
+/* Tamaños con los tokens reales de @material/web 2.5 */
+html[data-engine="expressive"] md-icon-button {
+  --md-icon-button-icon-size: 20px;
+}
+html[data-engine="expressive"] md-filled-icon-button,
+html[data-engine="expressive"] md-filled-tonal-icon-button,
+html[data-engine="expressive"] md-outlined-icon-button {
+  --md-filled-icon-button-container-width: 40px;
+  --md-filled-icon-button-container-height: 40px;
+  --md-filled-icon-button-icon-size: 20px;
+  --md-filled-tonal-icon-button-container-width: 40px;
+  --md-filled-tonal-icon-button-container-height: 40px;
+  --md-filled-tonal-icon-button-icon-size: 20px;
+  --md-outlined-icon-button-container-width: 40px;
+  --md-outlined-icon-button-container-height: 40px;
+  --md-outlined-icon-button-icon-size: 20px;
+}
+html[data-engine="expressive"] .tb-right md-icon-button {
+  --md-icon-button-icon-size: 18px;
+}
+html[data-engine="expressive"] .tb-right md-filled-icon-button,
+html[data-engine="expressive"] .tb-right md-filled-tonal-icon-button,
+html[data-engine="expressive"] .tb-right md-outlined-icon-button {
+  --md-filled-icon-button-container-width: 36px;
+  --md-filled-icon-button-container-height: 36px;
+  --md-filled-icon-button-icon-size: 18px;
+  --md-filled-tonal-icon-button-container-width: 36px;
+  --md-filled-tonal-icon-button-container-height: 36px;
+  --md-filled-tonal-icon-button-icon-size: 18px;
+  --md-outlined-icon-button-container-width: 36px;
+  --md-outlined-icon-button-container-height: 36px;
+  --md-outlined-icon-button-icon-size: 18px;
 }
 html[data-engine="expressive"] .live-pill {
   padding: 4px 9px;
@@ -137,6 +212,19 @@ html[data-engine="expressive"] md-text-button[disabled] {
   opacity: .45;
 }
 
+/* Icon-buttons deshabilitados (p. ej. «enviar» del chat con input vacío):
+   contenedor tonal suave en vez de transparente — visible pero apagado */
+html[data-engine="expressive"] md-filled-icon-button[disabled] {
+  --md-filled-icon-button-disabled-container-color: var(--ex-color-primary-container);
+  --md-filled-icon-button-disabled-icon-color: var(--ex-color-on-primary-container);
+  opacity: 1;
+}
+html[data-engine="expressive"] md-filled-tonal-icon-button[disabled] {
+  --md-filled-tonal-icon-button-disabled-container-color: var(--ex-color-primary-container);
+  --md-filled-tonal-icon-button-disabled-icon-color: var(--ex-color-on-primary-container);
+  opacity: 1;
+}
+
 /* ---- Segmented: grupo de botones conectado M3 ---- */
 html[data-engine="expressive"] .exp-seg {
   background: var(--ex-color-surface-container);
@@ -157,10 +245,60 @@ html[data-engine="expressive"] .exp-seg button.sel {
   font-weight: 600;
 }
 
-/* ---- Navbar inferior M3 ---- */
-html[data-engine="expressive"] .exp-navbar {
+/* ---- Navbar inferior M3 Expressive (item activo: indicador pill tonal) ---- */
+html[data-engine="expressive"] .m3-navbar {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
   background: var(--ex-color-surface-container);
   border-top: 1px solid var(--ex-color-outline-variant);
+  padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px));
+}
+html[data-engine="expressive"] .m3-navbar button {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+html[data-engine="expressive"] .m3-navbar .m3-navbar-ind {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(48px, 18vw, 64px);
+  height: 32px;
+  border-radius: 999px;
+  color: var(--ex-color-on-surface-variant);
+  background: transparent;
+  transition:
+    background-color var(--ex-spring-effects-fast-duration) var(--ex-spring-effects-fast-easing),
+    color var(--ex-spring-effects-fast-duration) var(--ex-spring-effects-fast-easing),
+    transform var(--ex-spring-spatial-fast-duration) var(--ex-spring-spatial-fast-easing);
+}
+html[data-engine="expressive"] .m3-navbar .m3-navbar-ind svg {
+  width: 20px;
+  height: 20px;
+}
+html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-ind {
+  background: var(--ex-color-secondary-container);
+  color: var(--ex-color-on-secondary-container);
+  transform: scale(1.02);
+}
+html[data-engine="expressive"] .m3-navbar .m3-navbar-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  color: var(--ex-color-on-surface-variant);
+  transition: color var(--ex-spring-effects-fast-duration) var(--ex-spring-effects-fast-easing);
+}
+html[data-engine="expressive"] .m3-navbar button.on .m3-navbar-label {
+  color: var(--ex-color-primary);
 }
 
 /* ---- Chips, badges y cards con roles M3 ---- */

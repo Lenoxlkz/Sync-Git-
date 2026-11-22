@@ -41,6 +41,8 @@ export interface Prefs {
 }
 
 export const ACCENTS = ['#0a84ff', '#5e5ce6', '#bf5af2', '#ff375f', '#ff9f0a', '#30d158', '#40cbe0'];
+/* Identificadores de acento (data-accent en <html>) en el mismo orden que ACCENTS */
+const ACCENT_IDS = ['azul', 'indigo', 'violeta', 'rosa', 'ambar', 'verde', 'cian'];
 
 const DEFAULT_PREFS: Prefs = {
   theme: 'auto', accent: '#0a84ff', reduceMotion: false, themeEngine: 'auto',
@@ -157,10 +159,10 @@ export function detectAndroidVersion(): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
-/** Motor efectivo: reduceMotion fuerza el de bajo consumo (sin blur ni
-    filtros SVG); auto resuelve por User-Agent; manual manda si se fijó. */
+/** Motor efectivo: reduceMotion solo fuerza el tema AMOLED (ya no cambia de
+    motor: la noche AMOLED funciona en Liquid Glass y en bajo consumo); auto
+    resuelve por User-Agent; manual manda si se fijó. */
 export function effectiveEngine(p: Pick<Prefs, 'reduceMotion' | 'themeEngine'>): Engine {
-  if (p.reduceMotion) return 'expressive';
   if (p.themeEngine === 'glass' || p.themeEngine === 'expressive') return p.themeEngine;
   const av = detectAndroidVersion();
   return av !== null && av <= 13 ? 'expressive' : 'glass';
@@ -183,7 +185,13 @@ export function applyAppearance(p: Prefs) {
   /* Expressive (Material) usa la clase .dark en un ancestro para su esquema */
   html.classList.toggle('dark', theme === 'dark');
   html.dataset.engine = effectiveEngine(p);
-  html.style.setProperty('--orbit-accent', p.accent);
+  /* El acento gobierna la paleta M3 del motor de bajo consumo: cada acento del
+     picker tiene su esquema HCT completo (claro y oscuro) en expressive-colors.css. */
+  const accentIdx = ACCENTS.indexOf(p.accent);
+  if (accentIdx >= 0) html.dataset.accent = ACCENT_IDS[accentIdx];
+  else delete html.dataset.accent;
+  /* En AMOLED el acento es el naranja vivo del esquema nocturno (no el del picker) */
+  html.style.setProperty('--orbit-accent', p.reduceMotion ? 'var(--ex-color-primary)' : p.accent);
   if (p.reduceMotion) html.dataset.motion = 'reduce';
   else delete html.dataset.motion;
 }

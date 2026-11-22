@@ -291,6 +291,44 @@ profundas, al estilo de las referencias de Material 3 Expressive.
 Cambiar de motor no toca las demás funciones: el motor Liquid Glass queda
 intacto y la app sigue funcionando idéntica en ambas renderizaciones.
 
+
+## Novedades v4.3 — Corrección de los 5 puntos del motor de bajo consumo
+
+**1. Iconos invisibles (⟳, lupa, enviar).** Causa real: en @material/web 2.5
+los icon-buttons exponen un `<slot>` SIN nombre (no un slot «icon»), así que
+el icono nunca se asignaba (0×0). Además los tamaños usan tokens específicos
+(`--md-filled-tonal-icon-button-container-width/height`, `--md-icon-button-icon-size`).
+El botón «enviar» del chat, cuando está deshabilitado (input vacío), ahora usa
+contenedor `primary-container` con icono legible en vez de desaparecer.
+
+**2. Navbar M3 Expressive propia.** Barra tonal con indicador «pill»
+(secondary-container) en el ítem activo, etiqueta en color primario y spring
+en el cambio (markup propio, estilo del sistema).
+
+**3. Textos/bordes de botones.** El reset universal de la app
+(`* { padding: 0 }`) aplastaba el padding del HOST de los botones oficiales:
+texto pegado a los bordes («Nuevo issue», «Nuevo repo», «Instalar»…).
+Restaurado con los tokens de espacio de cada variante
+(`--md-*-button-leading-space`, `with-leading-icon-*`). Los switches oficiales
+dejaron de pintar una «X» gigante (se retiró el atributo `icons`).
+
+**4. Los 7 acentos del picker en todo el motor de bajo consumo.**
+`applyAppearance` publica `data-accent` en `<html>` y expressive-colors.css
+genera, con el algoritmo HCT oficial (SchemeVibrant), el esquema COMPLETO
+(roles de color + tokens --md-sys-color-*) para azul, índigo, violeta, rosa,
+ámbar, verde y cian — en claro y oscuro. Elegir acento repinta todo: botones,
+campos, switches, hojas, chips, navbar.
+
+**5. AMOLED nocturno real en ambos motores.** «Reducir movimiento» ya no
+cambia el motor (Liquid Glass sigue disponible); fuerza el tema AMOLED:
+superficie negra pura + primario NARANJA vivo (#ffb064), dorado secundario y
+rojo-coral terciario (generados por HCT), en textos, bordes, switches y
+botones. También pisa las variables legacy de Liquid Glass para que el motor
+glass se vea igual de negro y cálido. En AMOLED el acento de la app es el
+naranja del esquema (no el del picker).
+
+Regeneración de paletas: `node scripts/fix-mcu-esm.js && node scripts/gen-m3-colors.js`.
+
 ## Rendimiento
 
 - **Export estático** (`output:'export'`): no hay servidor de app — el

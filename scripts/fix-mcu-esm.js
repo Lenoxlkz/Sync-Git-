@@ -26,8 +26,9 @@ for (const file of walk(ROOT)) {
 }
 console.log('archivos parcheados:', n);
 
-const { SchemeVibrant, argbFromHex, hexFromArgb } = require(ROOT + '/index.js');
-const d = new SchemeVibrant({ sourceColorArgb: argbFromHex('#7C5CFF'), dark: true, contrastLevel: 0 });
-const l = new SchemeVibrant({ sourceColorArgb: argbFromHex('#7C5CFF'), dark: false, contrastLevel: 0 });
+const { SchemeVibrant, argbFromHex, hexFromArgb, Hct } = require(ROOT + '/index.js');
+const hct = Hct.fromInt(argbFromHex('#7C5CFF'));
+const d = new SchemeVibrant(hct, true, 0);
+const l = new SchemeVibrant(hct, false, 0);
 console.log('oscuro · primary', hexFromArgb(d.primary), '· surface', hexFromArgb(d.surface));
 console.log('claro  · primary', hexFromArgb(l.primary), '· surface', hexFromArgb(l.surface));

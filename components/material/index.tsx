@@ -92,9 +92,11 @@ export function MdIconButton({ variant = 'standard', disabled, title, className,
   const Tag = ICO_TAG[variant] as React.ElementType;
   const guarded = (e: React.MouseEvent) => { e.stopPropagation(); onClick?.(e); };
   return (
+    /* @material/web 2.5: los icon-buttons exponen un <slot> SIN nombre (no un
+       slot «icon» como los botones): los children van directos. */
     <Tag className={className} style={style} onClick={guarded} disabled={disabled}
       title={title} aria-label={ariaLabel} data-orbit-md="1">
-      <span slot="icon" className="md-slot-icon">{children}</span>
+      {children}
     </Tag>
   );
 }
@@ -165,7 +167,7 @@ export function MdSwitch({ checked, disabled, className, style, 'aria-label': ar
     <md-switch
       ref={ref} className={className} style={style}
       checked={checked} disabled={disabled} aria-label={ariaLabel}
-      data-orbit-md="1" icons
+      data-orbit-md="1"
     />
   );
 }

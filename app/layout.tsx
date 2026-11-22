@@ -38,7 +38,7 @@ const themeScript = `(()=>{try{
   document.documentElement.classList.toggle('dark',dark);
   var m=navigator.userAgent.match(/Android\\s+(\\d+)/i);
   var av=m?parseInt(m[1],10):null;
-  var eng=p.reduceMotion?'expressive':(p.themeEngine==='glass'||p.themeEngine==='expressive')?p.themeEngine:(av!==null&&av<=13?'expressive':'glass');
+  var eng=(p.themeEngine==='glass'||p.themeEngine==='expressive')?p.themeEngine:(av!==null&&av<=13?'expressive':'glass');
   document.documentElement.dataset.engine=eng;
   if(p.accent)document.documentElement.style.setProperty('--orbit-accent',p.accent);
 }catch(e){}})()`;
