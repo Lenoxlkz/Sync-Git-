@@ -211,7 +211,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <OrbitLogo size={26} />
           <span>
             <b>GitHub Orbit</b>
-            <small>Centro de mando · v4.1</small>
+            <small>Centro de mando · v4.2</small>
           </span>
           </Link>
           <div className="tb-title"><h1>{current.label}</h1></div>

@@ -4,22 +4,21 @@
    Según el motor elegido (prefs.themeEngine + detección por User-Agent),
    cada pieza de UI se resuelve con:
    · 'glass'      → componentes Liquid Glass del vendor (@zakisheriff/liquid-glass).
-   · 'expressive' → Material 3 Expressive (@grenishrai/expressive, Tailwind v4,
-                    scheme fluid + engine motion) — tema de bajo consumo:
-                    sin backdrop-filter ni filtros SVG de refracción.
+   · 'expressive' → Material 3 Expressive con la LIBRERÍA OFICIAL de Google
+                    (@material/web v2.5, web components Lit) + paleta vibrante
+                    generada con material-color-utilities (HCT, SchemeVibrant).
+                    Tema de bajo consumo: sin backdrop-filter ni filtros SVG.
    Las páginas importan App* con alias Glass* (p. ej. `AppButton as GlassButton`),
    así el JSX de toda la app no cambia y los motores son intercambiables. */
 import { createContext, useContext } from 'react';
 import {
   GlassButton, GlassInput, GlassSwitch, GlassCard, GlassSheet, GlassSegmented, GlassSlider, GlassNav,
 } from '@zakisheriff/liquid-glass';
-import { Button as ExButton } from '@/components/expressive/button';
-import { IconButton as ExIconButton } from '@/components/expressive/icon-button';
+import {
+  MdButton, MdIconButton, MdTextField, MdSwitch, MdSlider,
+} from '@/components/material';
 import { Card as ExCard } from '@/components/expressive/card';
 import { Dialog, DialogContent } from '@/components/expressive/dialog';
-import { Switch as ExSwitch } from '@/components/expressive/switch';
-import { Slider as ExSlider } from '@/components/expressive/slider';
-import { TextField as ExTextField } from '@/components/expressive/text-field';
 import {
   NavigationBar as ExNavBar, NavigationBarItem as ExNavBarItem,
 } from '@/components/expressive/navigation-bar';
@@ -48,6 +47,9 @@ export interface AppButtonProps {
   title?: string;
   'aria-label'?: string;
 }
+
+/* Material oficial: glass→tonal · tinted/filled→filled · clear→text.
+   destructive→tokens de error oficiales del componente. */
 export function AppButton({ variant = 'glass', size = 'md', tint, icon, destructive, children, className, style, onClick, disabled, type = 'button', href, target, download, title, 'aria-label': ariaLabel }: AppButtonProps) {
   const eng = useEngine();
   if (eng === 'glass') {
@@ -59,28 +61,26 @@ export function AppButton({ variant = 'glass', size = 'md', tint, icon, destruct
       </GlassButton>
     );
   }
-  /* Material: glass→tonal · tinted/filled→filled · clear→text; destructive→error */
   const v = variant === 'filled' || variant === 'tinted' ? 'filled' : variant === 'clear' ? 'text' : 'tonal';
-  const err = destructive ? ' bg-error text-on-error' : '';
-  const sz = size === 'sm' ? 'xs' : 'sm';
-  const iconOnly = icon != null && children == null;
-  if (iconOnly) {
+  const err = destructive ? {
+    ['--md-filled-button-container-color' as never]: 'var(--ex-color-error)',
+    ['--md-filled-button-label-text-color' as never]: 'var(--ex-color-on-error)',
+  } as React.CSSProperties : undefined;
+  if (icon != null && children == null) {
     return (
-      <ExIconButton variant={v === 'text' ? 'standard' : v} size={sz} aria-label={(ariaLabel || '') as string}
-        disabled={disabled} onClick={onClick} type={type} title={title}
-        render={href ? <a href={href} target={target} rel='noreferrer' /> : undefined}
-        className={(className || '') + err} style={style}>
+      <MdIconButton variant={v === 'text' ? 'standard' : v} aria-label={ariaLabel}
+        disabled={disabled} onClick={onClick} title={title}
+        className={className} style={{ ...style, ...err }}>
         {icon}
-      </ExIconButton>
+      </MdIconButton>
     );
   }
   return (
-    <ExButton variant={v} size={sz} icon={icon} aria-label={ariaLabel} disabled={disabled}
-      onClick={onClick} type={type} title={title}
-      render={href ? <a href={href} target={target} rel='noreferrer' /> : undefined}
-      className={(className || '') + err} style={style}>
+    <MdButton variant={v} icon={icon} aria-label={ariaLabel} disabled={disabled}
+      onClick={onClick} type={type} title={title} href={href} target={target}
+      className={className} style={{ ...style, ...err }}>
       {children}
-    </ExButton>
+    </MdButton>
   );
 }
 
@@ -110,14 +110,17 @@ export function AppInput({ type = 'text', placeholder, value, onChange, onBlur, 
         disabled={disabled} tint={tint} aria-label={ariaLabel} />
     );
   }
-  /* Material: campo con etiqueta flotante; la etiqueta es el aria-label de la app */
+  /* md-outlined-text-field oficial; el evento input real se puentea en el wrapper */
   return (
-    <ExTextField
+    <MdTextField
       label={label || ariaLabel || placeholder || 'Campo'}
-      variant="outlined"
+      type={type} placeholder={placeholder} value={value}
       leadingIcon={icon}
-      type={type} placeholder={placeholder} value={value} onChange={onChange} onBlur={onBlur}
-      onKeyDown={onKeyDown} onFocus={onFocus} disabled={disabled}
+      onChange={onChange ? (e) => onChange(e as unknown as React.ChangeEvent<HTMLInputElement>) : undefined}
+      onBlur={onBlur ? () => onBlur({ target: { value: value ?? '' } } as React.FocusEvent<HTMLInputElement>) : undefined}
+      onFocus={onFocus ? () => onFocus({ target: { value: value ?? '' } } as React.FocusEvent<HTMLInputElement>) : undefined}
+      onKeyDown={onKeyDown ? (e) => onKeyDown(e as unknown as React.KeyboardEvent<HTMLInputElement>) : undefined}
+      disabled={disabled}
       className={className} style={style} aria-label={ariaLabel}
     />
   );
@@ -131,7 +134,7 @@ export function AppSwitch({ checked, onChange, disabled, tint, 'aria-label': ari
   if (eng === 'glass') {
     return <GlassSwitch checked={checked} onChange={onChange} disabled={disabled} tint={tint} aria-label={ariaLabel} />;
   }
-  return <ExSwitch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={ariaLabel} />;
+  return <MdSwitch checked={checked} onCheckedChange={onChange} disabled={disabled} aria-label={ariaLabel} />;
 }
 
 /* ---------- Card ---------- */
@@ -160,7 +163,8 @@ export function AppSheet({ open, onClose, detents, 'aria-label': ariaLabel, chil
   if (eng === 'glass') {
     return <GlassSheet open={open} onClose={onClose} detents={detents} aria-label={ariaLabel}>{children}</GlassSheet>;
   }
-  /* Material: diálogo centrado (los detents no aplican en Material 3) */
+  /* Shell propio estilo M3 (no hay bottom-sheet en @material/web); el interior
+     (botones, campos, switches…) ya es oficial. */
   return (
     <Dialog open={open} onOpenChange={o => { if (!o) onClose?.(); }}>
       <DialogContent className="exp-sheet" aria-label={ariaLabel}>{children}</DialogContent>
@@ -198,7 +202,7 @@ export function AppSlider({ value, onChange, min, max, step, showThumb, icon, la
   if (eng === 'glass') {
     return <GlassSlider value={value} onChange={onChange} min={min} max={max} step={step} showThumb={showThumb} icon={icon} label={label} tint={tint} aria-label={ariaLabel} />;
   }
-  return <ExSlider value={value} onValueChange={v => onChange(Array.isArray(v) ? v[0] : v)} min={min} max={max} step={step} thumbLabels={ariaLabel ? [ariaLabel] : undefined} aria-label={ariaLabel} />;
+  return <MdSlider value={value} onValueChange={v => onChange(v)} min={min} max={max} step={step} aria-label={ariaLabel} />;
 }
 
 /* ---------- Nav (barra inferior) ---------- */

@@ -1,0 +1,206 @@
+/* ==========================================================================
+   ORBIT · Motor bajo consumo con componentes OFICIALES @material/web
+   Archivo ESTÁTICO de estilo shell (el generador scripts/gen-m3-colors.js
+   SOLO reescribe expressive-colors.css; este no se toca).
+   Ajustes: piezas sin equivalente oficial (hoja inferior, segmented, navbar),
+   topbar compacto, chips/cards/diag/toast con roles M3.
+   ========================================================================== */
+
+/* Tipografía oficial: los md-* heredan la fuente de la app */
+:root {
+  --md-ref-typeface-brand: var(--font, 'Roboto, system-ui, sans-serif');
+  --md-ref-typeface-plain: var(--font, 'Roboto, system-ui, sans-serif');
+}
+
+/* Alturas de contenedor M3 */
+html[data-engine="expressive"] {
+  --md-filled-button-container-height: 44px;
+  --md-filled-tonal-button-container-height: 44px;
+  --md-text-button-container-height: 44px;
+  --md-outlined-button-container-height: 44px;
+  --md-elevated-button-container-height: 44px;
+}
+
+html[data-engine="expressive"] .md-slot-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+html[data-engine="expressive"] .md-slot-icon svg {
+  width: 19px;
+  height: 19px;
+}
+
+html[data-engine="expressive"] md-filled-button,
+html[data-engine="expressive"] md-filled-tonal-button,
+html[data-engine="expressive"] md-text-button,
+html[data-engine="expressive"] md-outlined-button,
+html[data-engine="expressive"] md-elevated-button {
+  font-weight: 600;
+}
+
+html[data-engine="expressive"] md-switch {
+  --md-switch-track-width: 50px;
+  --md-switch-track-height: 30px;
+}
+html[data-engine="expressive"] md-slider {
+  --md-slider-handle-height: 26px;
+  --md-slider-handle-width: 26px;
+}
+
+/* ---- Topbar compacto: sin wrap (los md-* son más anchos que los glass) ---- */
+html[data-engine="expressive"] .tb-right {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+html[data-engine="expressive"] .tb-right md-text-button {
+  --md-text-button-with-icon-horizontal-padding: 10px;
+  --md-text-button-label-text-size: 13px;
+  --md-filled-button-label-text-size: 13px;
+}
+html[data-engine="expressive"] .tb-right md-icon-button,
+html[data-engine="expressive"] .tb-right md-filled-tonal-icon-button {
+  --md-icon-button-size: 36px;
+  --md-filled-tonal-icon-button-size: 36px;
+}
+html[data-engine="expressive"] .live-pill {
+  padding: 4px 9px;
+  font-size: 11px;
+  background: var(--ex-color-secondary-container);
+  color: var(--ex-color-on-secondary-container);
+  border: none;
+  border-radius: 999px;
+  gap: 5px;
+}
+html[data-engine="expressive"] .live-pill .live-count {
+  min-width: 0;
+}
+html[data-engine="expressive"] .live-pill:not(.on) .live-count {
+  display: none;
+}
+html[data-engine="expressive"] .conn-pill {
+  background: var(--ex-color-primary-container);
+  color: var(--ex-color-on-primary-container);
+  border: none;
+}
+html[data-engine="expressive"] .conn-pill:not(.on) {
+  background: var(--ex-color-error-container);
+  color: var(--ex-color-on-error-container);
+}
+html[data-engine="expressive"] .tb-title h1 {
+  color: var(--ex-color-on-surface);
+}
+
+/* ---- Hoja inferior M3: superficie tonal, tirador y radio 28px ---- */
+html[data-engine="expressive"] .exp-sheet {
+  background: var(--ex-color-surface-container-high);
+  color: var(--ex-color-on-surface);
+  border-radius: var(--ex-shape-corner-extra-large) var(--ex-shape-corner-extra-large) 0 0;
+  border: 1px solid var(--ex-color-outline-variant);
+  border-bottom: none;
+  box-shadow: 0 -8px 40px rgb(0 0 0 / 0.45);
+}
+html[data-engine="expressive"] .exp-sheet::before {
+  content: "";
+  display: block;
+  width: 36px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ex-color-outline);
+  opacity: .55;
+  margin: 10px auto 2px;
+}
+html[data-engine="expressive"] .exp-sheet .sheet-head h3 {
+  color: var(--ex-color-on-surface);
+  font-weight: 700;
+}
+html[data-engine="expressive"] .exp-sheet .sheet-text {
+  color: var(--ex-color-on-surface-variant);
+}
+
+/* Acciones de hoja: sin wrap y botones oficiales compactos y repartidos */
+html[data-engine="expressive"] .sheet-actions {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+html[data-engine="expressive"] .sheet-actions md-text-button,
+html[data-engine="expressive"] .sheet-actions md-filled-button,
+html[data-engine="expressive"] .sheet-actions md-filled-tonal-button {
+  --md-text-button-label-text-size: 13.5px;
+  --md-filled-button-label-text-size: 13.5px;
+  --md-filled-tonal-button-label-text-size: 13.5px;
+  flex: 1;
+}
+html[data-engine="expressive"] md-filled-button[disabled],
+html[data-engine="expressive"] md-filled-tonal-button[disabled],
+html[data-engine="expressive"] md-text-button[disabled] {
+  opacity: .45;
+}
+
+/* ---- Segmented: grupo de botones conectado M3 ---- */
+html[data-engine="expressive"] .exp-seg {
+  background: var(--ex-color-surface-container);
+  border-radius: 999px;
+  border: none;
+  padding: 4px;
+  gap: 2px;
+}
+html[data-engine="expressive"] .exp-seg button {
+  color: var(--ex-color-on-surface-variant);
+  border-radius: 999px;
+  border: none;
+  transition: background-color var(--ex-spring-effects-fast-duration) var(--ex-spring-effects-fast-easing);
+}
+html[data-engine="expressive"] .exp-seg button.sel {
+  background: var(--ex-color-primary);
+  color: var(--ex-color-on-primary);
+  font-weight: 600;
+}
+
+/* ---- Navbar inferior M3 ---- */
+html[data-engine="expressive"] .exp-navbar {
+  background: var(--ex-color-surface-container);
+  border-top: 1px solid var(--ex-color-outline-variant);
+}
+
+/* ---- Chips, badges y cards con roles M3 ---- */
+html[data-engine="expressive"] .chip {
+  background: var(--ex-color-secondary-container);
+  color: var(--ex-color-on-secondary-container);
+  border: none;
+  border-radius: 999px;
+}
+html[data-engine="expressive"] .chip.warn {
+  background: var(--ex-color-tertiary-container);
+  color: var(--ex-color-on-tertiary-container);
+}
+html[data-engine="expressive"] .chip.ok {
+  background: var(--ex-color-primary-container);
+  color: var(--ex-color-on-primary-container);
+}
+html[data-engine="expressive"] .badge,
+html[data-engine="expressive"] .label-chip {
+  background: var(--ex-color-secondary-container);
+  color: var(--ex-color-on-secondary-container);
+  border-radius: 999px;
+}
+html[data-engine="expressive"] .orbit-card,
+html[data-engine="expressive"] .card {
+  background: var(--ex-color-surface-container);
+  border-color: var(--ex-color-outline-variant);
+  border-radius: var(--ex-shape-corner-large);
+}
+html[data-engine="expressive"] .topbar,
+html[data-engine="expressive"] header.appbar {
+  background: color-mix(in srgb, var(--ex-color-surface-container) 88%, transparent);
+}
+html[data-engine="expressive"] .diag {
+  background: var(--ex-color-error-container);
+  color: var(--ex-color-on-error-container);
+  border-radius: var(--ex-shape-corner-medium);
+}
+html[data-engine="expressive"] .toast {
+  background: var(--ex-color-inverse-surface);
+  color: var(--ex-color-inverse-on-surface);
+  border-radius: 999px;
+}

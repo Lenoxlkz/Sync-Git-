@@ -5,6 +5,13 @@
 /* Tema de bajo consumo (Material 3 Expressive): puente Tailwind v4
    sin preflight + tema generado (seed #0a84ff, scheme fluid, engine motion). */
 @import './expressive.css';
+/* Paleta M3 Expressive oficial (material-color-utilities · SchemeVibrant · seed
+   violeta Orbit) — sobreescribe los roles de color de expressive.css y da el
+   estilo shell (hoja, segmented, navbar, chips) al motor de bajo consumo. */
+@import './expressive-colors.css';
+/* Shell M3 estático (hoja, segmented, navbar, topbar, chips) — no lo toca
+   el generador de paletas. */
+@import './expressive-shell.css';
 @layer app {
 
 /* ================================================================

@@ -255,6 +255,42 @@ comparador de ramas), bóveda AES-256 (crear, bloquear, desbloquear, restaurar),
 reemplazo de token con verificación, NetKeep EN VIVO, motores glass/expressive
 y temas claro/oscuro, borrado local con confirmación.
 
+
+## Novedades v4.2 — Motor de bajo consumo con la librería OFICIAL de Google
+
+El tema «Bajo consumo» (Material 3 Expressive) ya no usa componentes propios:
+ahora renderiza con **@material/web 2.5** (los web components oficiales de
+Google) y la paleta se genera con el algoritmo oficial HCT
+(material-color-utilities) con `SchemeVibrant` y semilla violeta de Orbit,
+en los dos esquemas (claro y oscuro) — colores vivos y capas tonales
+profundas, al estilo de las referencias de Material 3 Expressive.
+
+**Componentes oficiales activos**
+- Botones: md-filled-button, md-filled-tonal-button, md-text-button,
+  md-outlined-button, md-elevated-button + sus versiones de icono.
+- Campos: md-outlined-text-field (etiqueta flotante, icono, puente React de
+  eventos input/change).
+- md-switch y md-slider oficiales; ajuste de tamaños por tokens.
+
+**Estilo shell M3 (piezas sin equivalente oficial, seguidas del mismo sistema)**
+- Hoja inferior con superficie `surface-container-high`, tirador y radio 28.
+- Segmented tipo grupo conectado, navbar tonal con indicador violeta,
+  chips/badges/diag/toast con roles de color M3.
+- Topbar compacto sin wrap; píldora EN VIVO/PAUSADO tonal.
+
+**Correcciones durante la integración**
+- Los clicks de los web components oficiales hacen stopPropagation: el click
+  que abre una hoja ya no la cierra como «click outside» al instante
+  (afectaba a Reemplazar token, borrar repo y cualquier hoja desde botón
+  oficial o menú contextual).
+- El menú contextual ya no dispara el cierre accidental de hojas.
+- La paleta se separó en `expressive-colors.css` (regenerable con
+  scripts/gen-m3-colors.js) y el shell en `expressive-shell.css` (estático),
+  para que regenerar colores no borre estilos.
+
+Cambiar de motor no toca las demás funciones: el motor Liquid Glass queda
+intacto y la app sigue funcionando idéntica en ambas renderizaciones.
+
 ## Rendimiento
 
 - **Export estático** (`output:'export'`): no hay servidor de app — el

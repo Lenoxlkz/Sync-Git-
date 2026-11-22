@@ -179,7 +179,7 @@ export function ContextMenu({ pos, items, onClose }: {
       <div className="ctx-menu" style={{ left: Math.max(8, x), top: Math.max(8, y) }}>
         {items.map((it, i) => it.sep
           ? <div key={i} className="ctx-sep" />
-          : <button key={i} className={`ctx-item${it.danger ? ' danger' : ''}`} onClick={() => { onClose(); it.fn?.(); }}>
+          : <button key={i} className={`ctx-item${it.danger ? ' danger' : ''}`} onClick={(e) => { e.stopPropagation(); onClose(); it.fn?.(); }}>
               {it.icon}<span>{it.label}</span>
             </button>)}
       </div>

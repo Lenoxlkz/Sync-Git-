@@ -1,0 +1,236 @@
+/* Paleta M3 Expressive de Orbit — generada con material-color-utilities
+   (algoritmo oficial de Google, HCT) · SchemeVibrant · semilla #7C5CFF.
+   Contenedores tonales afinados al estilo de las referencias (capas visibles).
+   Este archivo SOLO sobreescribe los roles de color de expressive.css (se importa
+   después) y alimenta también los tokens --md-sys-color-* que consumen los
+   componentes OFICIALES de @material/web. Regenerar: node scripts/fix-mcu-esm.js && node scripts/gen-m3-colors.js */
+:root {
+  --ex-color-primary: #6028ff;
+  --ex-color-on-primary: #ffffff;
+  --ex-color-primary-container: #e6deff;
+  --ex-color-on-primary-container: #4800d6;
+  --ex-color-primary-fixed: #e6deff;
+  --ex-color-primary-fixed-dim: #cabeff;
+  --ex-color-on-primary-fixed: #1c0062;
+  --ex-color-on-primary-fixed-variant: #4800d6;
+  --ex-color-inverse-primary: #cabeff;
+  --ex-color-secondary: #68577a;
+  --ex-color-on-secondary: #ffffff;
+  --ex-color-secondary-container: #efdbff;
+  --ex-color-on-secondary-container: #504061;
+  --ex-color-secondary-fixed: #efdbff;
+  --ex-color-secondary-fixed-dim: #d3bfe6;
+  --ex-color-on-secondary-fixed: #231533;
+  --ex-color-on-secondary-fixed-variant: #504061;
+  --ex-color-tertiary: #76517d;
+  --ex-color-on-tertiary: #ffffff;
+  --ex-color-tertiary-container: #fcd7ff;
+  --ex-color-on-tertiary-container: #5c3a64;
+  --ex-color-tertiary-fixed: #fcd7ff;
+  --ex-color-tertiary-fixed-dim: #e4b8ea;
+  --ex-color-on-tertiary-fixed: #2d0e36;
+  --ex-color-on-tertiary-fixed-variant: #5c3a64;
+  --ex-color-error: #ba1a1a;
+  --ex-color-on-error: #ffffff;
+  --ex-color-error-container: #ffdad6;
+  --ex-color-on-error-container: #93000a;
+  --ex-color-background: #fdf8ff;
+  --ex-color-on-background: #1c1a25;
+  --ex-color-surface: #fcf9ff;
+  --ex-color-on-surface: #1c1a25;
+  --ex-color-surface-variant: #e6e0f2;
+  --ex-color-on-surface-variant: #484553;
+  --ex-color-surface-dim: #dcd9e4;
+  --ex-color-surface-bright: #fcf9ff;
+  --ex-color-surface-container-lowest: #ffffff;
+  --ex-color-surface-container-low: #f6f2fa;
+  --ex-color-surface-container: #f0ecf5;
+  --ex-color-surface-container-high: #eae6f0;
+  --ex-color-surface-container-highest: #e4e1ea;
+  --ex-color-outline: #797585;
+  --ex-color-outline-variant: #c9c4d6;
+  --ex-color-shadow: #000000;
+  --ex-color-scrim: #000000;
+  --ex-color-inverse-surface: #312f3a;
+  --ex-color-inverse-on-surface: #f4eefd;
+}
+
+.dark {
+  --ex-color-primary: #cabeff;
+  --ex-color-on-primary: #31009a;
+  --ex-color-primary-container: #4800d6;
+  --ex-color-on-primary-container: #e6deff;
+  --ex-color-primary-fixed: #e6deff;
+  --ex-color-primary-fixed-dim: #cabeff;
+  --ex-color-on-primary-fixed: #1c0062;
+  --ex-color-on-primary-fixed-variant: #4800d6;
+  --ex-color-inverse-primary: #6028ff;
+  --ex-color-secondary: #d3bfe6;
+  --ex-color-on-secondary: #392a49;
+  --ex-color-secondary-container: #504061;
+  --ex-color-on-secondary-container: #efdbff;
+  --ex-color-secondary-fixed: #efdbff;
+  --ex-color-secondary-fixed-dim: #d3bfe6;
+  --ex-color-on-secondary-fixed: #231533;
+  --ex-color-on-secondary-fixed-variant: #504061;
+  --ex-color-tertiary: #e4b8ea;
+  --ex-color-on-tertiary: #44244c;
+  --ex-color-tertiary-container: #5c3a64;
+  --ex-color-on-tertiary-container: #fcd7ff;
+  --ex-color-tertiary-fixed: #fcd7ff;
+  --ex-color-tertiary-fixed-dim: #e4b8ea;
+  --ex-color-on-tertiary-fixed: #2d0e36;
+  --ex-color-on-tertiary-fixed-variant: #5c3a64;
+  --ex-color-error: #ffb4ab;
+  --ex-color-on-error: #690005;
+  --ex-color-error-container: #93000a;
+  --ex-color-on-error-container: #ffdad6;
+  --ex-color-background: #14121c;
+  --ex-color-on-background: #e6e0ef;
+  --ex-color-surface: #14121c;
+  --ex-color-on-surface: #e6e0ef;
+  --ex-color-surface-variant: #484553;
+  --ex-color-on-surface-variant: #c9c4d6;
+  --ex-color-surface-dim: #14121c;
+  --ex-color-surface-bright: #3a3843;
+  --ex-color-surface-container-lowest: #0f0d17;
+  --ex-color-surface-container-low: #1c1a25;
+  --ex-color-surface-container: #201e29;
+  --ex-color-surface-container-high: #2b2933;
+  --ex-color-surface-container-highest: #36333e;
+  --ex-color-outline: #938e9f;
+  --ex-color-outline-variant: #484553;
+  --ex-color-shadow: #000000;
+  --ex-color-scrim: #000000;
+  --ex-color-inverse-surface: #e6e0ef;
+  --ex-color-inverse-on-surface: #312f3a;
+  --ex-color-surface: #0b0912;
+  --ex-color-surface-dim: #0b0912;
+  --ex-color-surface-bright: #3b3750;
+  --ex-color-surface-container-lowest: #060509;
+  --ex-color-surface-container-low: #181522;
+  --ex-color-surface-container: #1d1a2b;
+  --ex-color-surface-container-high: #282438;
+  --ex-color-surface-container-highest: #332f45;
+}
+
+/* ---- Tokens oficiales --md-sys-color-* (los consumen los md-* de @material/web) ---- */
+:root {
+  --md-sys-color-primary: #6028ff;
+  --md-sys-color-on-primary: #ffffff;
+  --md-sys-color-primary-container: #e6deff;
+  --md-sys-color-on-primary-container: #4800d6;
+  --md-sys-color-primary-fixed: #e6deff;
+  --md-sys-color-primary-fixed-dim: #cabeff;
+  --md-sys-color-on-primary-fixed: #1c0062;
+  --md-sys-color-on-primary-fixed-variant: #4800d6;
+  --md-sys-color-inverse-primary: #cabeff;
+  --md-sys-color-secondary: #68577a;
+  --md-sys-color-on-secondary: #ffffff;
+  --md-sys-color-secondary-container: #efdbff;
+  --md-sys-color-on-secondary-container: #504061;
+  --md-sys-color-secondary-fixed: #efdbff;
+  --md-sys-color-secondary-fixed-dim: #d3bfe6;
+  --md-sys-color-on-secondary-fixed: #231533;
+  --md-sys-color-on-secondary-fixed-variant: #504061;
+  --md-sys-color-tertiary: #76517d;
+  --md-sys-color-on-tertiary: #ffffff;
+  --md-sys-color-tertiary-container: #fcd7ff;
+  --md-sys-color-on-tertiary-container: #5c3a64;
+  --md-sys-color-tertiary-fixed: #fcd7ff;
+  --md-sys-color-tertiary-fixed-dim: #e4b8ea;
+  --md-sys-color-on-tertiary-fixed: #2d0e36;
+  --md-sys-color-on-tertiary-fixed-variant: #5c3a64;
+  --md-sys-color-error: #ba1a1a;
+  --md-sys-color-on-error: #ffffff;
+  --md-sys-color-error-container: #ffdad6;
+  --md-sys-color-on-error-container: #93000a;
+  --md-sys-color-background: #fdf8ff;
+  --md-sys-color-on-background: #1c1a25;
+  --md-sys-color-surface: #fdf8ff;
+  --md-sys-color-on-surface: #1c1a25;
+  --md-sys-color-surface-variant: #e6e0f2;
+  --md-sys-color-on-surface-variant: #484553;
+  --md-sys-color-surface-dim: #ddd8e6;
+  --md-sys-color-surface-bright: #fdf8ff;
+  --md-sys-color-surface-container-lowest: #ffffff;
+  --md-sys-color-surface-container-low: #f7f1ff;
+  --md-sys-color-surface-container: #f1ebfa;
+  --md-sys-color-surface-container-high: #ebe6f5;
+  --md-sys-color-surface-container-highest: #e6e0ef;
+  --md-sys-color-outline: #797585;
+  --md-sys-color-outline-variant: #c9c4d6;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-inverse-surface: #312f3a;
+  --md-sys-color-inverse-on-surface: #f4eefd;
+}
+.dark {
+  --md-sys-color-primary: #cabeff;
+  --md-sys-color-on-primary: #31009a;
+  --md-sys-color-primary-container: #4800d6;
+  --md-sys-color-on-primary-container: #e6deff;
+  --md-sys-color-primary-fixed: #e6deff;
+  --md-sys-color-primary-fixed-dim: #cabeff;
+  --md-sys-color-on-primary-fixed: #1c0062;
+  --md-sys-color-on-primary-fixed-variant: #4800d6;
+  --md-sys-color-inverse-primary: #6028ff;
+  --md-sys-color-secondary: #d3bfe6;
+  --md-sys-color-on-secondary: #392a49;
+  --md-sys-color-secondary-container: #504061;
+  --md-sys-color-on-secondary-container: #efdbff;
+  --md-sys-color-secondary-fixed: #efdbff;
+  --md-sys-color-secondary-fixed-dim: #d3bfe6;
+  --md-sys-color-on-secondary-fixed: #231533;
+  --md-sys-color-on-secondary-fixed-variant: #504061;
+  --md-sys-color-tertiary: #e4b8ea;
+  --md-sys-color-on-tertiary: #44244c;
+  --md-sys-color-tertiary-container: #5c3a64;
+  --md-sys-color-on-tertiary-container: #fcd7ff;
+  --md-sys-color-tertiary-fixed: #fcd7ff;
+  --md-sys-color-tertiary-fixed-dim: #e4b8ea;
+  --md-sys-color-on-tertiary-fixed: #2d0e36;
+  --md-sys-color-on-tertiary-fixed-variant: #5c3a64;
+  --md-sys-color-error: #ffb4ab;
+  --md-sys-color-on-error: #690005;
+  --md-sys-color-error-container: #93000a;
+  --md-sys-color-on-error-container: #ffdad6;
+  --md-sys-color-background: #14121c;
+  --md-sys-color-on-background: #e6e0ef;
+  --md-sys-color-surface: #14121c;
+  --md-sys-color-on-surface: #e6e0ef;
+  --md-sys-color-surface-variant: #484553;
+  --md-sys-color-on-surface-variant: #c9c4d6;
+  --md-sys-color-surface-dim: #14121c;
+  --md-sys-color-surface-bright: #3a3843;
+  --md-sys-color-surface-container-lowest: #0f0d17;
+  --md-sys-color-surface-container-low: #1c1a25;
+  --md-sys-color-surface-container: #201e29;
+  --md-sys-color-surface-container-high: #2b2933;
+  --md-sys-color-surface-container-highest: #36333e;
+  --md-sys-color-outline: #938e9f;
+  --md-sys-color-outline-variant: #484553;
+  --md-sys-color-shadow: #000000;
+  --md-sys-color-scrim: #000000;
+  --md-sys-color-inverse-surface: #e6e0ef;
+  --md-sys-color-inverse-on-surface: #312f3a;
+}
+
+/* Acciones de hoja sin wrap y botones oficiales compactos */
+html[data-engine="expressive"] .sheet-actions {
+  flex-wrap: nowrap;
+  gap: 8px;
+}
+html[data-engine="expressive"] .sheet-actions md-text-button,
+html[data-engine="expressive"] .sheet-actions md-filled-button,
+html[data-engine="expressive"] .sheet-actions md-filled-tonal-button {
+  --md-text-button-label-text-size: 13.5px;
+  --md-filled-button-label-text-size: 13.5px;
+  --md-filled-tonal-button-label-text-size: 13.5px;
+  flex: 1;
+}
+html[data-engine="expressive"] md-filled-button[disabled],
+html[data-engine="expressive"] md-filled-tonal-button[disabled],
+html[data-engine="expressive"] md-text-button[disabled] {
+  opacity: .45;
+}
