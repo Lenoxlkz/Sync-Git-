@@ -16,7 +16,7 @@ import { readZip } from '@/lib/zip';
 import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, RepoPicker, BranchPicker } from '@/components/bits';
 import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { SideBySide } from '@/components/diff';
-import { IcUpload, IcFolder, IcFile, IcRefresh, IcCloud, IcCheck, IcWarn, IcExternal, IcTrash, IcCompare } from '@/components/Icons';
+import { IcUpload, IcFolder, IcFile, IcRefresh, IcCloud, IcCheck, IcWarn, IcExternal, IcTrash, IcCompare, IcX } from '@/components/Icons';
 
 export default function ExplorerPage() {
   const { connected, repos, prefs, scopes } = useOrbit();
@@ -147,6 +147,28 @@ export default function ExplorerPage() {
   }
   function autoPath(f: FileEntry): string {
     return stripRoot && detectedRoot && f.path.startsWith(detectedRoot) ? f.path.slice(detectedRoot.length) : f.path;
+  }
+  function effPath(f: FileEntry): string {
+    const auto = autoPath(f);
+    return f.customPath ? (normPath(f.customPath) || auto) : auto;
+  }
+  /* descarta un archivo antes de analizar: sale de la cola y anula el plan */
+  function discardFile(origPath: string) {
+    setFiles(prev => prev.filter(f => f.path !== origPath));
+    setPlan(null); setResult(null);
+    pushToast('Archivo descartado', 'info', origPath + ' no se subirá');
+  }
+  /* descarta desde el plan/árbol organizado: quita el archivo de la cola y del
+     plan sin re-analizar (las SHA del resto siguen siendo válidas) */
+  function discardFromPlan(destPath: string) {
+    setFiles(prev => prev.filter(f => effPath(f) !== destPath));
+    setPlan(p => p ? {
+      ...p,
+      creates: p.creates.filter(e => e.path !== destPath),
+      updates: p.updates.filter(e => e.path !== destPath),
+      skips: p.skips.filter(e => e.path !== destPath),
+    } : p);
+    pushToast('Archivo descartado', 'info', destPath + ' no se subirá' + (sync ? ' · re-analiza si usas Sincronizar espejo' : ''));
   }
   /* rutas finales actuales (para marcar duplicadas en el editor) */
   const finalPaths = useMemo(() => files.map(f => (f.customPath ? normPath(f.customPath) : autoPath(f))), [files, stripRoot, detectedRoot]);
@@ -312,7 +334,10 @@ export default function ExplorerPage() {
               const dup = finalPaths.filter(x => x.toLowerCase() === value.toLowerCase()).length > 1;
               return (
                 <div key={f.path} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <small className="tiny mono" style={{ color: 'var(--text-3)', overflowWrap: 'break-word' }}>{f.path}</small>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    <small className="tiny mono" style={{ color: 'var(--text-3)', overflowWrap: 'break-word', flex: 1 }}>{f.path}</small>
+                    <GlassButton size="sm" icon={<IcX size={12} />} destructive aria-label={'Descartar ' + f.path} onClick={() => discardFile(f.path)} />
+                  </div>
                   <GlassInput
                     placeholder="ruta/dentro/del/repo/archivo.ext"
                     value={value}
@@ -391,7 +416,7 @@ export default function ExplorerPage() {
             <GlassCard padding="10px">
               <div className="table-wrap">
                 <table className="plan-table">
-                  <thead><tr><th>Ruta</th><th>Acción</th><th>Tamaño</th><th>Comparar</th></tr></thead>
+                  <thead><tr><th>Ruta</th><th>Acción</th><th>Tamaño</th><th>Comparar</th><th>Quitar</th></tr></thead>
                   <tbody>
                     {rows.slice(0, 150).map(({ e, kind }) => (
                       <tr key={e.path}>
@@ -406,6 +431,11 @@ export default function ExplorerPage() {
                               <IcCompare size={12} /> Diff
                             </button>
                           ) : <span className="tiny">—</span>}
+                        </td>
+                        <td>
+                          <button className="chip-btn" aria-label={'Descartar ' + e.path} onClick={() => discardFromPlan(e.path)}>
+                            <IcX size={12} /> Quitar
+                          </button>
                         </td>
                       </tr>
                     ))}

@@ -12,7 +12,7 @@ import { logAct } from '@/lib/activity';
 import { Section, NeedConn, NeedScope, Diag, Spinner, ConfirmSheet, ContextMenu, langColor, relTime, fmtSize, type CtxItem } from '@/components/bits';
 import { CAPS, capsFromScopes } from '@/lib/scopes';
 import { RepoFicha } from '@/components/RepoFicha';
-import { IcPlus, IcLock, IcGlobe, IcTrash, IcBranch, IcIssue, IcStar, IcBox, IcCommit, IcCode, IcUpload, IcFork, IcMore } from '@/components/Icons';
+import { IcPlus, IcLock, IcGlobe, IcTrash, IcBranch, IcIssue, IcStar, IcBox, IcCommit, IcCode, IcUpload, IcFork, IcMore, IcCopy } from '@/components/Icons';
 
 type Sort = 'updated' | 'name' | 'stars';
 type Layout = 'grid' | 'list';
@@ -81,6 +81,20 @@ export default function ReposPage() {
     return [
       { label: 'Abrir ficha', icon: <IcBox size={14} />, fn: () => openFicha(full) },
       { label: 'Abrir en Code Explorer', icon: <IcCode size={14} />, fn: () => { setPrefs({ lastRepo: full }); router.push('/code/'); } },
+      {
+        label: 'Copiar URL HTTPS', icon: <IcCopy size={14} />, fn: async () => {
+          const url = 'https://github.com/' + full;
+          try { await navigator.clipboard.writeText(url); pushToast('URL copiada', 'ok', url); }
+          catch { pushToast('Copia manual', 'info', url); }
+        },
+      },
+      {
+        label: 'Copiar URL de clonación (git)', icon: <IcCopy size={14} />, fn: async () => {
+          const url = 'https://github.com/' + full + '.git';
+          try { await navigator.clipboard.writeText(url); pushToast('URL de clonación copiada', 'ok', url); }
+          catch { pushToast('Copia manual', 'info', url); }
+        },
+      },
       { label: 'Comparar ramas', icon: <IcBranch size={14} />, fn: () => { setPrefs({ lastRepo: full }); router.push('/code/'); } },
       { sep: true, label: '' },
       { label: 'Subir archivos aquí', icon: <IcUpload size={14} />, fn: () => { setPrefs({ lastRepo: full }); router.push('/explorer/'); } },

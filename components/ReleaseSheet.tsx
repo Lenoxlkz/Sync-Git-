@@ -6,7 +6,7 @@
 import { useRef, useState } from 'react';
 import { AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassSheet } from '@/components/ui';
 import { pushToast } from '@/lib/store';
-import { gh, uploadReleaseAsset, type GHRelease } from '@/lib/github';
+import { gh, uploadReleaseAsset, createBranch, fileToB64, GitHubError, type GHRelease } from '@/lib/github';
 import { logAct } from '@/lib/activity';
 import { fmtSize } from './bits';
 import { IcArchive, IcPlus, IcX, IcCheck, IcAlert, IcZap, IcRefresh, IcBox } from './Icons';
@@ -15,8 +15,8 @@ const MAXB = 350 * 1024 * 1024;
 
 interface Asset { file: File; progress: number; status: 'pend' | 'ok' | 'fail'; msg?: string }
 
-export function ReleaseSheet({ open, onClose, repo, onDone }: {
-  open: boolean; onClose: () => void; repo: string; onDone: () => void;
+export function ReleaseSheet({ open, onClose, repo, defaultBranch, onDone }: {
+  open: boolean; onClose: () => void; repo: string; defaultBranch: string; onDone: () => void;
 }) {
   const [tag, setTag] = useState('');
   const [title, setTitle] = useState('');
@@ -27,6 +27,7 @@ export function ReleaseSheet({ open, onClose, repo, onDone }: {
   const [rel, setRel] = useState<GHRelease | null>(null);
   const [relUrl, setRelUrl] = useState('');
   const [err, setErr] = useState('');
+  const [compat, setCompat] = useState('');
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -35,7 +36,7 @@ export function ReleaseSheet({ open, onClose, repo, onDone }: {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
     setTag(''); setTitle(''); setNotes(''); setAssets([]); setStage('form');
-    setTleft(120); setRel(null); setRelUrl(''); setErr(''); setBusy(false);
+    setTleft(120); setRel(null); setRelUrl(''); setErr(''); setBusy(false); setCompat('');
   }
 
   function close() { if (timerRef.current) clearInterval(timerRef.current); onClose(); }
@@ -107,6 +108,56 @@ export function ReleaseSheet({ open, onClose, repo, onDone }: {
     } catch (e) {
       setErr('No se pudo crear la release: ' + (e instanceof Error ? e.message : 'error'));
       setStage('form');
+    } finally { setBusy(false); }
+  }
+
+  /* Modo compatible: GitHub bloquea la subida directa de adjuntos por CORS
+     (uploads.github.com no responde a preflights). Publica cada archivo fallido
+     como parte del repo, en la rama release-assets, y añade los enlaces de
+     descarga al cuerpo de la release — todo 100 % en cliente con la Contents API. */
+  const COMPAT_MAX = 90 * 1024 * 1024;
+  async function compatUpload() {
+    const failed = assets.filter(a => a.status === 'fail');
+    if (!rel || !failed.length) return;
+    setBusy(true); setErr(''); setCompat('Preparando la rama release-assets…');
+    try {
+      const BR = 'release-assets';
+      const brs = await gh.branches(repo).catch(() => []);
+      if (!brs.some(b => b.name === BR)) await createBranch(repo, BR, defaultBranch);
+      const lines: string[] = [];
+      for (const a of failed) {
+        if (a.file.size > COMPAT_MAX) {
+          setAssets(prev => prev.map(x => x.file.name === a.file.name ? { ...x, status: 'fail', msg: 'supera 90 MB: la Contents API no admite archivos tan grandes; súbelo manualmente a GitHub' } : x));
+          continue;
+        }
+        setCompat('Subiendo ' + a.file.name + ' al repo (' + Math.round(a.file.size / 1024) + ' KB)…');
+        const b64 = await fileToB64(a.file);
+        const path = 'releases/' + rel.tag_name + '/' + a.file.name;
+        try {
+          await gh.contentPut(repo, path, b64, { branch: BR, message: 'Orbit: adjunto ' + a.file.name + ' para ' + rel.tag_name });
+        } catch (e) {
+          if (e instanceof GitHubError && (e.status === 422 || e.status === 409)) {
+            const ex = await gh.contentGet(repo, path, BR).catch(() => null);
+            if (!ex) throw e;
+            await gh.contentPut(repo, path, b64, { branch: BR, message: 'Orbit: reemplaza ' + a.file.name + ' para ' + rel.tag_name, sha: ex.sha });
+          } else throw e;
+        }
+        lines.push('- [' + a.file.name + '](https://github.com/' + repo + '/raw/' + BR + '/' + path + ')');
+        setAssets(prev => prev.map(x => x.file.name === a.file.name ? { ...x, status: 'ok', progress: 100, msg: 'publicado en el repo + enlace en la release' } : x));
+      }
+      if (lines.length) {
+        const prevBody = rel.body || '';
+        const sep = prevBody.includes('**Descargas') ? '' : '\n\n**Descargas (modo compatible):**\n';
+        const newBody = prevBody + sep + lines.join('\n');
+        await gh.releaseEdit(repo, rel.id, { body: newBody });
+        setRel({ ...rel, body: newBody });
+      }
+      setCompat('');
+      pushToast('Modo compatible completado', 'ok', 'Archivo(s) en el repo + enlaces en la release');
+      logAct('archive', 'Adjuntos vía modo compatible', failed.length + ' @ ' + repo);
+    } catch (e) {
+      setCompat('');
+      setErr('Modo compatible falló: ' + (e instanceof Error ? e.message : 'error'));
     } finally { setBusy(false); }
   }
 
@@ -196,8 +247,12 @@ export function ReleaseSheet({ open, onClose, repo, onDone }: {
           {err ? (
             <>
               <p className="orbit-diag" style={{ marginTop: 10 }}>{err}</p>
+              {compat ? <p className="tiny" style={{ marginTop: 6 }}>{compat}</p> : null}
               <div className="sheet-actions" style={{ justifyContent: 'flex-start' }}>
-                <GlassButton icon={<IcRefresh size={13} />} onClick={retryFailed}>Reintentar fallidos</GlassButton>
+                <GlassButton icon={<IcRefresh size={13} />} disabled={busy} onClick={retryFailed}>Reintentar fallidos</GlassButton>
+                <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcBox size={13} />} disabled={busy} onClick={compatUpload}>
+                  Modo compatible: al repo + enlace
+                </GlassButton>
               </div>
             </>
           ) : null}

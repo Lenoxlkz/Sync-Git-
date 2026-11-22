@@ -8,9 +8,9 @@ import { AppButton as GlassButton, AppInput as GlassInput, AppSheet as GlassShee
 import { useOrbit, pushToast, setPrefs } from '@/lib/store';
 import { gh, createBranch, GitHubError, type GHBranch, type GHCommitFull, type GHTag, type GHRelease } from '@/lib/github';
 import { logAct } from '@/lib/activity';
-import { relTime, fmtSize, langColor, Diag } from './bits';
+import { relTime, fmtSize, langColor, Diag, ConfirmSheet } from './bits';
 import { ReleaseSheet } from './ReleaseSheet';
-import { IcBranch, IcCommit, IcTag, IcArchive, IcPlus, IcTrash, IcCode, IcLock, IcGlobe, IcExternal } from './Icons';
+import { IcBranch, IcCommit, IcTag, IcArchive, IcPlus, IcTrash, IcCode, IcLock, IcGlobe, IcExternal, IcCopy } from './Icons';
 
 type Tab = 'info' | 'branches' | 'commits' | 'tags' | 'releases';
 
@@ -26,7 +26,11 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
   const [tags, setTags] = useState<GHTag[] | null>(null);
   const [releases, setReleases] = useState<GHRelease[] | null>(null);
   const [newBranch, setNewBranch] = useState('');
+  const [newTag, setNewTag] = useState('');
   const [relSheet, setRelSheet] = useState(false);
+  const [delRel, setDelRel] = useState<GHRelease | null>(null);
+  const [delTag, setDelTag] = useState<GHTag | null>(null);
+  const [delAsset, setDelAsset] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     if (open && repo) { setTab('info'); setErr(''); }
@@ -54,6 +58,72 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
   }
 
   function go(t: Tab) { setTab(t); void loadTab(t); }
+
+  /* recarga forzada: loadTab saltaba la petición si el estado del closure ya
+     tenía datos (stale closure tras setX(null)) y la lista quedaba vacía */
+  async function reloadTab(t: 'branches' | 'commits' | 'tags' | 'releases') {
+    if (!repo) return;
+    setLoading(true); setErr('');
+    try {
+      if (t === 'branches') setBranches(await gh.branches(repo.full_name));
+      else if (t === 'commits') setCommits(await gh.commits(repo.full_name, repo.default_branch, 10));
+      else if (t === 'tags') setTags(await gh.tags(repo.full_name));
+      else if (t === 'releases') setReleases(await gh.releases(repo.full_name));
+    } catch (e) { setErr(m(e)); } finally { setLoading(false); }
+  }
+
+  async function copyRepoUrl() {
+    if (!repo) return;
+    const url = 'https://github.com/' + repo.full_name;
+    try { await navigator.clipboard.writeText(url); pushToast('URL copiada', 'ok', url); }
+    catch { pushToast('Copia manual', 'info', url); }
+  }
+
+  async function addTag() {
+    if (!repo || !newTag.trim()) return;
+    const name = newTag.trim().replace(/\s+/g, '-');
+    setErr('');
+    try {
+      const sha = (await gh.ref(repo.full_name, repo.default_branch)).object.sha;
+      await gh.tagCreate(repo.full_name, name, sha);
+      logAct('tag', 'Tag creado', name + ' @ ' + repo.full_name);
+      pushToast('Tag creado', 'ok', name + ' → ' + sha.slice(0, 7));
+      setNewTag(''); void reloadTab('tags');
+    } catch (e) { setErr(m(e)); }
+  }
+
+  async function doDelRel() {
+    if (!repo || !delRel) return;
+    try {
+      await gh.releaseDelete(repo.full_name, delRel.id);
+      logAct('trash', 'Release eliminada', delRel.tag_name + ' @ ' + repo.full_name);
+      pushToast('Release eliminada', 'ok', delRel.tag_name + ' · el tag sigue existiendo (pestaña Tags)');
+      void reloadTab('releases');
+    } catch (e) { pushToast('No se pudo eliminar', 'err', m(e)); }
+    finally { setDelRel(null); }
+  }
+
+  async function doDelTag() {
+    if (!repo || !delTag) return;
+    try {
+      await gh.tagDelete(repo.full_name, delTag.name);
+      logAct('trash', 'Tag eliminado', delTag.name + ' @ ' + repo.full_name);
+      pushToast('Tag eliminado', 'ok', delTag.name);
+      void reloadTab('tags');
+    } catch (e) { pushToast('No se pudo eliminar', 'err', m(e)); }
+    finally { setDelTag(null); }
+  }
+
+  async function doDelAsset() {
+    if (!repo || !delAsset) return;
+    try {
+      await gh.releaseAssetDelete(repo.full_name, delAsset.id);
+      logAct('trash', 'Adjunto eliminado', delAsset.name + ' @ ' + repo.full_name);
+      pushToast('Adjunto eliminado', 'ok', delAsset.name);
+      void reloadTab('releases');
+    } catch (e) { pushToast('No se pudo eliminar', 'err', m(e)); }
+    finally { setDelAsset(null); }
+  }
 
   async function addBranch() {
     if (!repo || !newBranch.trim()) return;
@@ -112,7 +182,9 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
               Abrir en Code Explorer
             </GlassButton>
             <GlassButton icon={<IcBranch size={14} />} onClick={() => go('branches')}>Gestionar ramas</GlassButton>
+            <GlassButton icon={<IcCopy size={14} />} onClick={copyRepoUrl}>Copiar URL HTTPS</GlassButton>
           </div>
+          <p className="tiny" style={{ marginTop: 8, color: 'var(--text-3)' }}>https://github.com/{repo.full_name}</p>
         </div>
       ) : null}
 
@@ -164,9 +236,14 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
             <div key={t.name} className="row" style={{ cursor: 'default' }}>
               <span style={{ color: 'var(--warn)', display: 'inline-flex' }}><IcTag size={15} /></span>
               <div className="r-main"><div className="r-title mono">{t.name}</div></div>
+              <GlassButton size="sm" icon={<IcTrash size={13} />} destructive aria-label={'Eliminar tag ' + t.name} onClick={() => setDelTag(t)} />
             </div>
           ))}
           {tags && !tags.length ? <p className="tiny">Este repositorio no tiene etiquetas.</p> : null}
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <GlassInput placeholder="v1.0.0 (desde la rama por defecto)" value={newTag} onChange={e => setNewTag(e.target.value)} className="mono" aria-label="Nuevo tag" tint="var(--orbit-accent)" />
+            <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcPlus size={14} />} disabled={!newTag.trim()} onClick={addTag} aria-label="Crear tag" />
+          </div>
         </div>
       ) : null}
 
@@ -182,14 +259,48 @@ export function RepoFicha({ open, onClose }: { open: boolean; onClose: () => voi
               <div className="r-main">
                 <div className="r-title">{x.name || x.tag_name} <span className="badge blue mono">{x.tag_name}</span></div>
                 <div className="r-meta">{x.published_at ? new Date(x.published_at).toLocaleDateString('es') : ''}</div>
+                {x.assets && x.assets.length ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                    {x.assets.map(a => (
+                      <span key={a.id} className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                        {a.name} · {Math.round(a.size / 1024)} KB
+                        <button className="chip-btn" aria-label={'Eliminar adjunto ' + a.name} onClick={() => setDelAsset({ id: a.id, name: a.name })}>
+                          <IcTrash size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
                 {x.body ? <p className="tiny" style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{x.body.slice(0, 300)}</p> : null}
               </div>
+              <GlassButton size="sm" icon={<IcTrash size={13} />} destructive aria-label={'Eliminar release ' + x.tag_name} onClick={() => setDelRel(x)} />
             </div>
           ))}
           {releases && !releases.length ? <p className="tiny">Sin releases. Publica la primera versión con el botón de arriba.</p> : null}
-          <ReleaseSheet open={relSheet} onClose={() => setRelSheet(false)} repo={repo.full_name} onDone={() => { setReleases(null); void loadTab('releases'); }} />
+          <ReleaseSheet open={relSheet} onClose={() => setRelSheet(false)} repo={repo.full_name} defaultBranch={repo.default_branch} onDone={() => { void reloadTab('releases'); }} />
         </div>
       ) : null}
+          <ConfirmSheet
+            open={!!delRel} onClose={() => setDelRel(null)}
+            title={'Eliminar release ' + (delRel?.tag_name || '')}
+            text={'Se elimina la release en GitHub (no el código ni la rama). El tag seguirá existiendo: bórralo también desde la pestaña Tags si quieres.'}
+            confirmLabel="Eliminar release" typeTo={delRel?.tag_name}
+            onConfirm={doDelRel}
+          />
+          <ConfirmSheet
+            open={!!delTag} onClose={() => setDelTag(null)}
+            title={'Eliminar tag ' + (delTag?.name || '')}
+            text={'Se elimina la etiqueta del repositorio. Si una release apunta a este tag, la release quedará sin etiqueta (podrás borrarla aparte).'}
+            confirmLabel="Eliminar tag" typeTo={delTag?.name}
+            onConfirm={doDelTag}
+          />
+          <ConfirmSheet
+            open={!!delAsset} onClose={() => setDelAsset(null)}
+            title={'Eliminar adjunto ' + (delAsset?.name || '')}
+            text={'Se elimina el archivo adjunto de la release. Los commits y el resto de la release no se tocan.'}
+            confirmLabel="Eliminar adjunto" typeTo={delAsset?.name}
+            onConfirm={doDelAsset}
+          />
     </GlassSheet>
   );
 }

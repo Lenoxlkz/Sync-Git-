@@ -720,3 +720,14 @@ html[data-engine="expressive"][data-amoled] {
 .orbit-row > [data-slot="text-field"], .orbit-row > .keyfield, .orbit-row > input { flex: 1 1 100%; min-width: 0 }
 
 }
+
+
+/* ── v4.0 · guardas anti-desborde horizontal ─────────────────────────────
+   El documento solo se desplaza en vertical, siempre: ningún sheet, dialog,
+   menú o filtro visual puede ensanchar la página (paneo lateral / zoom que
+   "agranda" el sitio cuando se abre un modal). overflow-x: clip no crea
+   contenedor de scroll, así position:sticky y el scroll vertical intactos. */
+html, body { overflow-x: clip; }
+@supports not (overflow: clip) { html, body { overflow-x: hidden; } }
+.lg-sheet, [data-slot="dialog"] { max-width: 100vw; }
+.sheet-text, .sheet-title, .sheet-head h3 { overflow-wrap: anywhere; }

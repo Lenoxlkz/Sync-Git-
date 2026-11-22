@@ -40,7 +40,7 @@ export function DialogContent({ className, motion, children, ref, ...props }: Di
           data-slot="dialog"
           data-motion={motion}
           className={cn(
-            "focus-ring flex w-full min-w-70 max-w-140 flex-col gap-4 rounded-shape-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3",
+            "focus-ring flex w-full max-w-140 flex-col gap-4 rounded-shape-extra-large bg-surface-container-high p-6 text-on-surface shadow-elevation-3",
             "origin-top [transition:transform_var(--ex-spring-spatial-default-duration)_var(--ex-spring-spatial-default-easing),opacity_var(--ex-spring-effects-default-duration)_var(--ex-spring-effects-default-easing)]",
             "data-starting-style:-translate-y-4 data-starting-style:scale-y-75 data-starting-style:opacity-0",
             "data-ending-style:scale-95 data-ending-style:opacity-0",

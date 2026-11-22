@@ -224,6 +224,21 @@ export const gh = {
   releaseCreate: (repo: string, body: { tag_name: string; name?: string; body?: string; target_commitish?: string }) =>
     req<GHRelease>(`/repos/${repo}/releases`, { method: 'POST', body }),
 
+  releaseDelete: (repo: string, id: number) => req<null>(`/repos/${repo}/releases/${id}`, { method: 'DELETE' }),
+  releaseEdit: (repo: string, id: number, patch: { body?: string; name?: string }) =>
+    req<GHRelease>(`/repos/${repo}/releases/${id}`, { method: 'PATCH', body: patch }),
+  releaseAssetDelete: (repo: string, id: number) => req<null>(`/repos/${repo}/releases/assets/${id}`, { method: 'DELETE' }),
+  tagDelete: (repo: string, tag: string) => req<null>(`/repos/${repo}/git/refs/tags/${enc(tag)}`, { method: 'DELETE' }),
+  tagCreate: (repo: string, tag: string, sha: string) =>
+    req<{ ref: string }>(`/repos/${repo}/git/refs`, { method: 'POST', body: { ref: 'refs/tags/' + tag, sha } }),
+  contentGet: (repo: string, path: string, ref?: string) =>
+    req<{ sha: string; content?: string; encoding?: string }>(`/repos/${repo}/contents/${path.split('/').map(enc).join('/')}${ref ? '?ref=' + enc(ref) : ''}`),
+  contentPut: (repo: string, path: string, contentB64: string, opts: { branch?: string; message?: string; sha?: string }) =>
+    req<{ content: { sha: string }; commit: { sha: string } }>(`/repos/${repo}/contents/${path.split('/').map(enc).join('/')}`, {
+      method: 'PUT',
+      body: { content: contentB64, message: opts.message || 'Orbit: adjunto de release', branch: opts.branch, sha: opts.sha },
+    }),
+
   blob: (repo: string, sha: string) =>
     req<{ content: string; encoding: string; size: number }>(`/repos/${repo}/git/blobs/${sha}`),
 
@@ -293,9 +308,14 @@ export async function createBranch(repo: string, name: string, from: string): Pr
   });
 }
 
-/** Sube un paquete adjunto a una release (uploads.github.com, con progreso). */
+/** Sube un paquete adjunto a una release (uploads.github.com, con progreso).
+    OJO: GitHub no responde a las preflights CORS de uploads.github.com (OPTIONS
+    → 400 sin Access-Control-*), así que un navegador estándar NO puede completar
+    esta llamada: xhr.onerror salta siempre que no haya una extensión que relaje
+    CORS. Reintentamos por si es red puntual y el error final explica el motivo y
+    la alternativa (modo compatible en ReleaseSheet: archivo al repo + enlace). */
 export function uploadReleaseAsset(repo: string, releaseId: number, file: File,
-  onProgress?: (p: { loaded: number; total: number }) => void): Promise<unknown> {
+  onProgress?: (p: { loaded: number; total: number }) => void, attempt = 0): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `https://uploads.github.com/repos/${repo}/releases/${releaseId}/assets?name=${encodeURIComponent(file.name)}`);
@@ -311,7 +331,13 @@ export function uploadReleaseAsset(repo: string, releaseId: number, file: File,
         reject(new Error('La subida devolvió ' + xhr.status + (xhr.status === 422 ? ' (nombre duplicado en la release)' : '')));
       }
     };
-    xhr.onerror = () => reject(new Error('No se pudo conectar con uploads.github.com (revisa la red o el bloqueo del navegador)'));
+    xhr.onerror = () => {
+      if (attempt < 2) {
+        setTimeout(() => uploadReleaseAsset(repo, releaseId, file, onProgress, attempt + 1).then(resolve, reject), 1200 * (attempt + 1));
+        return;
+      }
+      reject(new GitHubError('uploads.github.com inalcanzable desde el navegador: GitHub bloquea la subida directa de adjuntos por CORS (no es un fallo de tu red). Usa «Modo compatible» para publicar el archivo en el repo y enlazarlo en la release.', 0));
+    };
     xhr.send(file);
   });
 }

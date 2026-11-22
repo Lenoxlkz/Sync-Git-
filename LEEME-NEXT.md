@@ -1,4 +1,4 @@
-# Orbit Next v3.9 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
+# Orbit Next v4.0 — Next.js · Liquid Glass o Material 3 Expressive (bajo consumo)
 
 El centro de mando personal de GitHub, reconstruido como **aplicación Next.js
 (App Router, TypeScript, export estático)** con la librería
@@ -191,6 +191,29 @@ háptica y título vivo con la cuota.**
   está desbloqueada; al desbloquear se restauran en la sesión y al cambiar
   alguna se re-sella sola. Al eliminar la bóveda, las claves vuelven al
   almacenamiento local en claro (como antes).
+
+
+## Novedades v4.0 — Subida y releases: correcciones y funciones nuevas
+
+- **Modal «Subir al repositorio» ya no puede desbordar la página**: guardas
+  anti-desborde horizontal globales (overflow-x: clip en el documento,
+  max-width: 100vw en sheets/dialogs y corte de palabras largas). Ningún modal
+  vuelve a ensanchar ni inclinar el sitio, en ningún motor ni pantalla.
+- **Adjuntos de release: modo compatible.** GitHub bloquea la subida directa
+  a uploads.github.com desde navegadores (no responde a las preflights CORS —
+  verificado contra la API real; por eso «No se pudo conectar»). La subida
+  directa se reintenta y, si el navegador no puede, un botón «Modo compatible:
+  al repo + enlace» publica cada archivo en la rama `release-assets` con la
+  Contents API y añade los enlaces de descarga al cuerpo de la release.
+- **Eliminar releases, tags y adjuntos** (Repositorio → Releases/Tags), con
+  confirmación escribiendo el nombre: eliminar release no toca el código ni el
+  tag; eliminar adjunto deja el resto de la release intacta.
+- **Crear tags** desde la pestaña Tags (apuntan a la rama por defecto) y
+  **copiar URL HTTPS / URL de clonación git** en el menú contextual de cada
+  repo (los tres puntos) y en la ficha (Información → Copiar URL HTTPS).
+- **Descartar archivos antes de subir**: botón en cada fila de «Ruta de
+  destino» y columna «Quitar» en el árbol organizado del plan — saca el
+  archivo de la cola y del plan sin re-analizar lo demás.
 
 ## Rendimiento
 
