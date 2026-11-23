@@ -91,7 +91,25 @@ jobs:
           # si el secret llegara a renombrarse.
           GITHUB_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET || secrets.GITHUB_CLIENT_SECRET }}
           ORBIT_VERSION_CODE: ${{ github.run_number }}
-        run: gradle assembleRelease --no-daemon
+        run: |
+          # Autoverificación del client_secret sin revelar el valor (GitHub
+          # enmascara con *** todo lo que coincida con él). Caso visto en r11:
+          # el secret guardado era el CLIENT ID público (20 caracteres) y el
+          # APK salió con un secret inútil: el intercambio OAuth habría
+          # fallado con bad_client_secret. Se corta el build de inmediato
+          # para no publicar un APK con el login roto.
+          if [ -z "$GITHUB_CLIENT_SECRET" ]; then
+            echo "::warning::CLIENT_SECRET vacío en Actions: el APK saldrá sin secret embebido; la app pedirá el secret una sola vez en pantalla."
+          elif [ "$GITHUB_CLIENT_SECRET" = "Ov23lidu7f0fKNEIvqbP" ]; then
+            echo "::error::CLIENT_SECRET contiene el CLIENT ID público (se ve como *** porque coincide con el valor del secret) y NO es válido: el intercambio fallaría con bad_client_secret. Guarda el CLIENT SECRET real de la OAuth App (github.com/settings/developers → Client secrets) en Settings → Secrets and variables → Actions."
+            exit 1
+          elif [[ "$GITHUB_CLIENT_SECRET" == ghp_* || "$GITHUB_CLIENT_SECRET" == github_pat_* ]]; then
+            echo "::error::CLIENT_SECRET parece un token PAT, no un client secret. El client secret se genera en github.com/settings/developers → tu OAuth App → Client secrets."
+            exit 1
+          else
+            echo "client_secret embebido en BuildConfig (${#GITHUB_CLIENT_SECRET} caracteres; el valor queda enmascarado)."
+          fi
+          gradle assembleRelease --no-daemon
 
       - name: Preparar APK
         run: |
