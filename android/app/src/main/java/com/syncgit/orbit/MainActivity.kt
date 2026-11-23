@@ -64,8 +64,8 @@ class MainActivity : AppCompatActivity() {
 
     private val assetLoader = WebViewAssetLoader.Builder()
         .setDomain("appassets.androidplatform.net")
-        .addPathHandler("/Sync-Git-/", WebViewAssetLoader.AssetsPathHandler(this, SITE_ASSETS))
-        .addPathHandler("/", WebViewAssetLoader.AssetsPathHandler(this, SITE_ASSETS))
+        .addPathHandler("/Sync-Git-/", WebViewAssetLoader.PathHandler { path -> openSiteAsset(path) })
+        .addPathHandler("/", WebViewAssetLoader.PathHandler { path -> openSiteAsset(path) })
         .build()
 
     private val oauthLauncher =
@@ -259,6 +259,50 @@ class MainActivity : AppCompatActivity() {
     }
 
     /* ---------- inyección del shell + token en el HTML servido ---------- */
+
+    /** Sirve los assets de la web (assets/site) con directory-index y MIME. */
+    private fun openSiteAsset(path: String): WebResourceResponse? {
+        var p = path.trimStart('/')
+        if (p.isEmpty() || p.endsWith("/")) p += "index.html"
+        val assetPath = SITE_ASSETS + "/" + p
+        return try {
+            val stream = assets.open(assetPath)
+            val mime = guessMime(assetPath)
+            val encoding = if (mime.startsWith("text/") ||
+                mime.endsWith("javascript") || mime.endsWith("json") ||
+                mime.endsWith("xml") || mime.endsWith("manifest+json")
+            ) "utf-8" else null
+            WebResourceResponse(mime, encoding, stream)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    private fun guessMime(path: String): String {
+        val ext = path.substringAfterLast('.', "").lowercase()
+        return when (ext) {
+            "html" -> "text/html"
+            "js", "mjs" -> "text/javascript"
+            "css" -> "text/css"
+            "json", "map" -> "application/json"
+            "webmanifest" -> "application/manifest+json"
+            "svg" -> "image/svg+xml"
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "ico" -> "image/x-icon"
+            "woff" -> "font/woff"
+            "woff2" -> "font/woff2"
+            "ttf" -> "font/ttf"
+            "txt" -> "text/plain"
+            "wasm" -> "application/wasm"
+            "xml" -> "application/xml"
+            "pdf" -> "application/pdf"
+            "mp4" -> "video/mp4"
+            else -> "application/octet-stream"
+        }
+    }
 
     private fun readShellAsset(): String? = try {
         assets.open(SHELL_ASSET).readBytes().toString(Charsets.UTF_8)
