@@ -85,7 +85,11 @@ jobs:
       - name: Compilar APK release
         working-directory: android
         env:
-          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+          # El secret en Actions se llama CLIENT_SECRET: GitHub no permite
+          # crear secretos con prefijo GITHUB_ (reservado). Se mapea al
+          # nombre de la env que espera build.gradle.kts, con fallback por
+          # si el secret llegara a renombrarse.
+          GITHUB_CLIENT_SECRET: ${{ secrets.CLIENT_SECRET || secrets.GITHUB_CLIENT_SECRET }}
           ORBIT_VERSION_CODE: ${{ github.run_number }}
         run: gradle assembleRelease --no-daemon
 
@@ -115,7 +119,7 @@ jobs:
             --notes "APK nativo de **GitHub Orbit** (misma web, empaquetada como app Android) · build r$VERSION_CODE.
 
           - **Paridad completa con la web**: mismo build de Next.js que GitHub Pages, empaquetado dentro del APK (incluido _next: CSS, JS y datos RSC), mismos temas (Liquid Glass, Material 3 Expressive, Modo Simple), mismas funciones.
-          - **Inicio de sesión OAuth oficial de GitHub**: pantalla de GitHub dentro de la app (device flow, mismo token y mismos scopes); con el secret \`GITHUB_CLIENT_SECRET\` configurado pasa automáticamente al flujo de autorización con callback \`orbit://oauth/callback\`.
+          - **Inicio de sesión OAuth oficial de GitHub**: selector de cuentas de GitHub dentro de la app (\`select_account\`, PKCE S256, callback \`orbit://oauth/callback\`), mismo token y mismos scopes. Con el client_secret embebido (secret \`CLIENT_SECRET\` en Actions) el intercambio es automático; si faltara, la app lo pide una sola vez.
           - **Firma estable**: todos los builds salen del mismo keystore → las próximas actualizaciones se instalan directamente encima de esta, sin desinstalar. (Si venías de un APK anterior al r$VERSION_CODE, desinstala esa versión una sola vez.)
           - Compilado automáticamente con GitHub Actions a partir de \`main\`.
 
