@@ -28,26 +28,49 @@ usa GitHub Pages.
 
 La web usa Personal Access Token pegado en Control Center. La app usa el
 **OAuth oficial de GitHub** (Client ID `Ov23li…`, callback registrada
-`orbit://oauth/callback`) y entrega el token a la web por
+`orbit://oauth/callback`) **con el selector de cuentas de GitHub** — el mismo
+patrón que cualquier app nativa con deep link — y entrega el token a la web por
 `sessionStorage('orbit.token')` — la misma vía que la web usa con el PAT, así
 que todo lo demás (scopes, secciones, bóveda, chat IA…) funciona igual.
 
-Dos flujos oficiales, el mismo token y los mismos scopes
-(`GitHubOAuth.kt`):
+El flujo, paso a paso (`OAuthActivity.kt` + `GitHubOAuth.kt`):
 
-- **Con `client_secret`** (secret `GITHUB_CLIENT_SECRET` en Actions):
-  WebView dentro de la app → `github.com/login/oauth/authorize` →
-  redirect a `orbit://oauth/callback?code=…` (interceptado por el WebView o
-  por el intent-filter) → intercambio del `code` por el token.
-- **Sin `client_secret`** (estado actual): **flujo por dispositivo** oficial
-  de GitHub. VERIFICADO contra la API real: para OAuth Apps el intercambio
-  del `code` exige `client_secret` (sin él responde
-  `incorrect_client_credentials`; PKCE no lo sustituye), mientras que el
-  device flow funciona solo con el Client ID. La app muestra el código en
-  pantalla (botón «Copiar código») y abre `github.com/login/device` en su
-  propio WebView; el token llega por polling. Añade el secret
-  `GITHUB_CLIENT_SECRET` y la app pasa automáticamente al flujo de callback
-  sin cambiar nada más.
+1. «Iniciar sesión» → WebView dentro de la app que abre DIRECTAMENTE la
+   pantalla oficial de selección de cuenta de GitHub:
+   `https://github.com/login/oauth/select_account?client_id=…&redirect_uri=
+   orbit%3A%2F%2Foauth%2Fcallback&response_type=code&scope=…&state=…&
+   code_challenge=…&code_challenge_method=S256` (Client ID de Orbit, state,
+   PKCE S256 y la callback registrada, sincronizados en una sola URL).
+2. GitHub muestra de una vez las cuentas con sesión activa («Signed in as … →
+   Continue») o «Use a different account»; si la WebView no tiene sesión,
+   primero pide login y regresa al selector. VERIFICADO contra el endpoint
+   real: sin sesión responde 302 a `/login` conservando el `return_to` con
+   TODOS los parámetros.
+3. Al elegir cuenta, GitHub redirige a `orbit://oauth/callback?code=…`
+   (interceptado por la WebView o por el intent-filter) y la app intercambia
+   el `code` por el token.
+4. Cadena de respaldo de URLs: `select_account` → `authorize` con
+   `prompt=select_account` → `authorize` clásica. Si GitHub retirara alguna
+   ruta, la WebView prueba la siguiente sin que el usuario note nada.
+
+**El client_secret es imprescindible para el intercambio** — VERIFICADO contra
+el endpoint real (POST `/login/oauth/access_token`): GitHub responde
+`incorrect_client_credentials` sin él, con o sin PKCE, ANTES de validar el
+`code`, y PKCE no lo sustituye (probado con varios client_id, incluido el de
+una app comercial con este mismo patrón). Dos vías para dárselo:
+
+- **Embebido (cero fricción, como hacen las apps comerciales)**: secret
+  `GITHUB_CLIENT_SECRET` en Actions → el APK lo trae dentro (`BuildConfig`) →
+  el selector de cuentas funciona al instante y sin preguntas.
+- **Pedido una sola vez en la app**: sin secret embebido, la app muestra una
+  pantalla propia la primera vez —con enlace directo a
+  github.com/settings/developers → «Git Orbit» → «Generate a new client
+  secret»—, lo guarda CIFRADO (EncryptedSharedPreferences) y no vuelve a
+  preguntar; «Desconectar» NO lo borra.
+
+El **device flow** oficial de GitHub (funciona solo con client_id) queda como
+respaldo secundario (botón «Prefiero el flujo por dispositivo») para quien no
+quiera tocar secrets.
 
 Scopes solicitados: los que GitHub acepta realmente para OAuth Apps,
 verificados contra `/login/device/code` (que rechaza los inexistentes):
@@ -98,9 +121,12 @@ android/
       MainActivity.kt         WebView + WebViewAssetLoader (origen appassets.androidplatform.net),
                               inyección del shell, puente JS, descargas, file chooser, barras del sistema
       SiteStorage.kt          extracción de assets/site.zip → filesDir (con protección zip-slip)
-      OAuthActivity.kt        OAuth oficial: device flow en pantalla o WebView de autorización
-      GitHubOAuth.kt          authorize URL + exchange code→token + device flow
-      TokenStore.kt           token cifrado (EncryptedSharedPreferences, fallback a prefs privadas)
+      OAuthActivity.kt        OAuth oficial: selector de cuentas de GitHub (select_account),
+                              client_secret una vez (cifrado) y device flow de respaldo
+      GitHubOAuth.kt          URLs de autorización (select_account → prompt → clásica) + PKCE +
+                              exchange code→token + device flow
+      TokenStore.kt           token y client_secret cifrados (EncryptedSharedPreferences, fallback
+                              a prefs privadas)
     assets/
       site.zip                la web de Orbit (la empaqueta el workflow desde out/)
       shell/app-shell.js      puente nativo (sesión OAuth, logout, login OAuth,
@@ -129,5 +155,5 @@ android/
   de ese formulario. Los cambios estéticos se aplican tras la hidratación de
   React para no provocar mismatch.
 - Descargas (`a[download]` con blob) se convierten en archivos reales en
-  `Descargas/Orbit` + hoja de compartir; los enlaces externos abren el
+  `Descargas/Orbit` + hoja para compartir; los enlaces externos abren el
   navegador; la subida de archivos usa el selector de archivos de Android.
