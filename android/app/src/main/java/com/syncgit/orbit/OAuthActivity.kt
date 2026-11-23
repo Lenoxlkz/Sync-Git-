@@ -48,6 +48,7 @@ class OAuthActivity : AppCompatActivity() {
     private lateinit var deviceCodeView: TextView
     private lateinit var deviceStatus: TextView
     private lateinit var openInWebBtn: Button
+    private lateinit var copyCodeBtn: Button
 
     private val io = Executors.newSingleThreadExecutor()
     private val cancelled = AtomicBoolean(false)
@@ -144,10 +145,28 @@ class OAuthActivity : AppCompatActivity() {
             setBackgroundColor(Color.parseColor("#161b22"))
         }
         openInWebBtn = Button(this).apply { text = "Abrir github.com/login/device" }
+        copyCodeBtn = Button(this).apply {
+            text = "Copiar código"
+            setOnClickListener {
+                val code = deviceCodeView.text.toString()
+                if (code.isNotBlank() && code != "····-····") {
+                    val cm = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("Orbit", code))
+                    deviceStatus.text = "Código copiado al portapapeles ✓"
+                }
+            }
+        }
         devicePanel.addView(deviceTitle, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         devicePanel.addView(deviceStatus, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         devicePanel.addView(deviceCodeView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        devicePanel.addView(openInWebBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        val deviceBtnRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(12), 0, 0)
+        }
+        deviceBtnRow.addView(copyCodeBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { rightMargin = dp(12) })
+        deviceBtnRow.addView(openInWebBtn, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        devicePanel.addView(deviceBtnRow, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         root.addView(devicePanel, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
 
         setContentView(root)
@@ -172,7 +191,7 @@ class OAuthActivity : AppCompatActivity() {
             }
         }
 
-        retryBtn.setOnClickListener { startAuthorize() }
+        retryBtn.setOnClickListener { startPreferredFlow() }
         deviceFallbackBtn.setOnClickListener { startDeviceFlow() }
         openInWebBtn.setOnClickListener {
             val s = session ?: return@setOnClickListener
@@ -181,10 +200,25 @@ class OAuthActivity : AppCompatActivity() {
             web.loadUrl(s.verificationUri)
         }
 
-        if (savedInstanceState == null) startAuthorize()
+        if (savedInstanceState == null) startPreferredFlow()
     }
 
     private var session: GitHubOAuth.DeviceSession? = null
+
+    /* ---------- selección de flujo ---------- */
+
+    /* El intercambio code→token de las OAuth Apps de GitHub exige client_secret
+       (verificado contra /login/oauth/access_token: sin secret responde
+       incorrect_client_credentials, y PKCE no lo sustituye en OAuth Apps). Así:
+       · Con client_secret (secret GITHUB_CLIENT_SECRET en Actions) → flujo web
+         completo: WebView con github.com/login/oauth/authorize →
+         orbit://oauth/callback → code → token.
+       · Sin client_secret → flujo por dispositivo oficial de GitHub, que
+         funciona solo con el client_id y entrega el mismo token y scopes:
+         pantalla con el código + github.com/login/device dentro de la app. */
+    private fun startPreferredFlow() {
+        if (BuildConfig.GITHUB_CLIENT_SECRET.isNotBlank()) startAuthorize() else startDeviceFlow()
+    }
 
     /* ---------- autorización web (PKCE) ---------- */
 

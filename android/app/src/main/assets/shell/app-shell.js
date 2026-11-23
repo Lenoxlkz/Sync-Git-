@@ -96,14 +96,16 @@
 
   /* ---------- 3 · Control Center: OAuth en lugar de PAT ---------- */
 
-  /* El campo de token desaparece (ambos motores visuales) */
+  /* El campo de token desaparece (ambos motores visuales y ambos inputs) */
   function ensureStyle() {
     if (document.getElementById('orbit-android-style')) return;
     var st = document.createElement('style');
     st.id = 'orbit-android-style';
     st.textContent =
       'input[aria-label="Personal Access Token"],' +
-      '[aria-label="Personal Access Token"]{display:none!important;}';
+      '[aria-label="Personal Access Token"],' +
+      'input[aria-label="Token nuevo"],' +
+      '[aria-label="Token nuevo"]{display:none!important;}';
     document.head.appendChild(st);
   }
 
@@ -146,7 +148,16 @@
     var txt = (el.textContent || '').trim();
     var label = OAUTH_LABELS[txt];
     if (!label) return;
-    if (setBtnText(el, label)) el.dataset.orbitOauth = '1';
+    if (setBtnText(el, label)) {
+      el.dataset.orbitOauth = '1';
+      /* El botón nace disabled hasta escribir un PAT (disabled={busy || !tok.trim()}),
+         pero en la app el input de token está oculto: sin esto el botón nunca
+         recibiría clics y el OAuth sería imposible. El login nativo no depende
+         del contenido del input. */
+      el.disabled = false;
+      el.removeAttribute('disabled');
+      el.setAttribute('aria-disabled', 'false');
+    }
   }
 
   function patchTexts() {
@@ -188,28 +199,39 @@
     });
   }
 
+  /* La parte ESTÉTICA (renombrar botón, ocultar input PAT, notas) se aplica
+     DESPUÉS de la hidratación de React: si se muta el texto antes, React
+     registra mismatch de hidratación (#418) y repinta. La INTERCEPCIÓN del
+     clic va desde el principio: no muta DOM y funciona con el texto original
+     («Verificar y conectar» está en OAUTH_LABELS). */
   function startObserver() {
     try {
       new MutationObserver(queuePatch)
-        .observe(document.body, { childList: true, subtree: true });
+        .observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['disabled', 'class', 'data-orbit-md'],
+        });
     } catch (e) { }
     queuePatch();
   }
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startObserver);
-  } else {
-    startObserver();
+  function whenHydrated(fn) {
+    if (document.readyState === 'complete') setTimeout(fn, 150);
+    else window.addEventListener('load', function () { setTimeout(fn, 150); });
   }
+  whenHydrated(startObserver);
 
   /* Clic → OAuth (fase de captura: corre ANTES de los handlers de React,
-     incluidos los de los web components md-*). */
+     incluidos los de los web components md-*). renameButton ya re-habilitó
+     el botón (nace disabled sin token escrito), así que aquí no se exige
+     nada del formulario PAT: el login nativo lo sustituye por completo. */
   document.addEventListener('click', function (e) {
     if (!e.target || !e.target.closest) return;
     var btn = e.target.closest(BTN_SEL);
     if (!btn) return;
     var txt = (btn.textContent || '').trim();
     if (btn.dataset.orbitOauth === '1' || OAUTH_LABELS[txt]) {
-      if (btn.disabled) return;
       e.preventDefault();
       e.stopPropagation();
       try { B.startOAuth(); } catch (err) { }

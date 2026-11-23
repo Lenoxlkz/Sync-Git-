@@ -3,23 +3,20 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-/* Todos los scopes que GitHub ofrece hoy a las apps OAuth (docs oficiales
-   «Scopes for OAuth apps»). La app los pide todos: el usuario concede en una
-   sola pantalla y Orbit habilita cada función según lo concedido, igual que
-   hace la web con los scopes del token. Si el OAuth registrado es una GitHub
-   App, el parámetro scope se ignora y mandan los permisos configurados en su
-   página de ajustes de la app. */
+/* Scopes reales aceptados por GitHub para OAuth Apps, verificados contra el
+   endpoint oficial /login/device/code (que rechaza con invalid_scope los
+   inexistentes). Quedan FUERA por no existir en la API de GitHub:
+   discussions, write:project, admin/read/write:ssh_signing y offline_access. */
 val ORBIT_SCOPES = listOf(
     "repo", "repo:status", "repo_deployment", "public_repo", "repo:invite", "security_events",
     "admin:repo_hook", "write:repo_hook", "read:repo_hook",
     "admin:org", "write:org", "read:org", "admin:org_hook",
     "admin:public_key", "write:public_key", "read:public_key",
-    "gist", "discussions", "write:discussion", "read:discussion",
-    "notifications", "user", "read:user", "user:email", "user:follow",
-    "project", "read:project", "write:project",
+    "gist", "notifications", "user", "read:user", "user:email", "user:follow",
+    "project", "read:project",
     "delete_repo", "write:packages", "read:packages", "delete:packages",
     "admin:gpg_key", "write:gpg_key", "read:gpg_key",
-    "admin:ssh_signing", "codespace", "workflow", "read:audit_log", "offline_access",
+    "codespace", "workflow",
 ).joinToString(" ")
 
 /* Firma: si Actions aporta KEYSTORE_BASE64/KEYSTORE_PASSWORD/KEY_ALIAS se usa
@@ -37,7 +34,9 @@ android {
         applicationId = "com.syncgit.orbit"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
+        /* versionCode monotónico: en CI usa el número de run de Actions,
+           así cada compilación nueva es una actualización instalable. */
+        versionCode = (System.getenv("ORBIT_VERSION_CODE") ?: "1").toInt()
         versionName = "4.6.0"
         versionNameSuffix = "-android"
 

@@ -1,6 +1,8 @@
 # Compila la app nativa de Orbit: reconstruye la web (npm ci + next build,
-# MISMO build que GitHub Pages), la copia dentro de los assets del APK y
-# genera el APK firmado con Gradle. La web desplegada en Pages no se toca.
+# MISMO build que GitHub Pages), la empaqueta como site.zip dentro de los
+# assets del APK (un ZIP es inmune al patrón <dir>_* de aapt que descartaba
+# _next/) y genera el APK firmado con el keystore estable de los secrets.
+# La web desplegada en Pages no se toca.
 
 name: Build Orbit APK (Android)
 
@@ -38,11 +40,19 @@ jobs:
           test -f out/index.html || { echo "Falta out/index.html"; exit 1; }
           echo "Web exportada:"; du -sh out
 
-      - name: Copiar la web dentro de los assets de la app
+      - name: Empaquetar la web como site.zip (assets de la app)
         run: |
           rm -rf android/app/src/main/assets/site
-          mkdir -p android/app/src/main/assets/site
-          cp -r out/. android/app/src/main/assets/site/
+          rm -f android/app/src/main/assets/site/.gitkeep
+          cd out && zip -qr "$GITHUB_WORKSPACE/android/app/src/main/assets/site.zip" . && cd ..
+          ls -la android/app/src/main/assets/site.zip
+          # Garantía anti-regresión: el ZIP debe traer el JS/CSS de Next (_next).
+          unzip -l android/app/src/main/assets/site.zip | grep -q "_next/static/chunks/" \
+            || { echo "ERROR: site.zip sin _next/static/chunks — el APK saldría sin funciones"; exit 1; }
+          unzip -l android/app/src/main/assets/site.zip | grep -q "_next/static/css/" \
+            || { echo "ERROR: site.zip sin _next/static/css — el APK saldría sin estilos"; exit 1; }
+          # AAPT ignora directorios que empiezan por «_»; site.zip evita eso por diseño.
+          echo "site.zip OK: $(unzip -l android/app/src/main/assets/site.zip | tail -1)"
 
       - uses: actions/setup-java@v4
         with:
@@ -54,33 +64,29 @@ jobs:
         with:
           gradle-version: '8.10.2'
 
-      - name: Preparar keystore de firma
+      - name: Preparar keystore de firma (fijo, desde los secrets del repo)
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/orbit.keystore"
-            echo "KS_FILE=$RUNNER_TEMP/orbit.keystore" >> "$GITHUB_ENV"
-            echo "KS_PASS=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
-            echo "KS_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "Usando keystore estable de los secrets"
-          else
-            keytool -genkeypair -v -keystore "$RUNNER_TEMP/orbit.keystore" \
-              -storepass orbitandroid -keypass orbitandroid -alias orbit \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=GitHub Orbit, OU=Personal, O=Orbit, C=CR"
-            echo "KS_FILE=$RUNNER_TEMP/orbit.keystore" >> "$GITHUB_ENV"
-            echo "KS_PASS=orbitandroid" >> "$GITHUB_ENV"
-            echo "KS_ALIAS=orbit" >> "$GITHUB_ENV"
-            echo "Keystore efímero generado (configura KEYSTORE_* para firma estable)"
+          # Firma ESTABLE obligatoria: todos los builds salen del mismo
+          # keystore, así que cada actualización se instala SIN desinstalar.
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ERROR: falta el secret KEYSTORE_BASE64 — sin él cada build tendría firma distinta y exigiría desinstalar."
+            exit 1
           fi
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/orbit.keystore"
+          echo "KS_FILE=$RUNNER_TEMP/orbit.keystore" >> "$GITHUB_ENV"
+          echo "KS_PASS=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+          echo "KS_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+          echo "Keystore estable cargado (alias: $KEY_ALIAS)"
 
       - name: Compilar APK release
         working-directory: android
         env:
           GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+          ORBIT_VERSION_CODE: ${{ github.run_number }}
         run: gradle assembleRelease --no-daemon
 
       - name: Preparar APK
@@ -100,15 +106,17 @@ jobs:
       - name: Publicar en Releases (android-latest)
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION_CODE: ${{ github.run_number }}
         run: |
           gh release delete android-latest --cleanup-tag -y || true
-          gh release create android-latest "Orbit-Android.apk#Orbit-Android-v4.6.0.apk" \
+          gh release create android-latest "Orbit-Android.apk#Orbit-Android-v4.6.0.r$VERSION_CODE.apk" \
             --title "Orbit para Android · compilación automática" \
             --latest \
-            --notes "APK nativo de **GitHub Orbit** (misma web, empaquetada como app Android).
+            --notes "APK nativo de **GitHub Orbit** (misma web, empaquetada como app Android) · build r$VERSION_CODE.
 
-          - Inicio de sesión por **OAuth oficial de GitHub** (WebView → orbit://oauth/callback → PKCE, todos los scopes).
-          - Paridad completa con la web: mismo build de Next.js que GitHub Pages, mismos temas (Liquid Glass, Material 3 Expressive, Modo Simple), mismas funciones.
+          - **Paridad completa con la web**: mismo build de Next.js que GitHub Pages, empaquetado dentro del APK (incluido _next: CSS, JS y datos RSC), mismos temas (Liquid Glass, Material 3 Expressive, Modo Simple), mismas funciones.
+          - **Inicio de sesión OAuth oficial de GitHub**: pantalla de GitHub dentro de la app (device flow, mismo token y mismos scopes); con el secret \`GITHUB_CLIENT_SECRET\` configurado pasa automáticamente al flujo de autorización con callback \`orbit://oauth/callback\`.
+          - **Firma estable**: todos los builds salen del mismo keystore → las próximas actualizaciones se instalan directamente encima de esta, sin desinstalar. (Si venías de un APK anterior al r$VERSION_CODE, desinstala esa versión una sola vez.)
           - Compilado automáticamente con GitHub Actions a partir de \`main\`.
 
           **Instalación:** descarga el APK, ábrelo y acepta instalar desde fuentes desconocidas si es la primera vez."

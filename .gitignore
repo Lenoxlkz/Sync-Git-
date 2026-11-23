@@ -4,3 +4,12 @@ out/
 next-env.d.ts
 *.tsbuildinfo
 .DS_Store
+
+# APK: la web viaja como site.zip generado por CI (nunca en el repo)
+android/app/src/main/assets/site
+android/app/src/main/assets/site.zip
+*.keystore
+# Gradle build (local)
+android/.gradle/
+android/build/
+android/app/build/

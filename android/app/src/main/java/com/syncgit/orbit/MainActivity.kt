@@ -34,14 +34,14 @@ import java.util.concurrent.Executors
 /**
  * Shell principal de Orbit para Android.
  *
- * Sirve la MISMA web que GitHub Pages (copiada en assets/site por el workflow
- * de compilación) bajo el origen seguro https://appassets.androidplatform.net,
- * con basePath /Sync-Git- intacto: paridad visual, funcional y de temas
- * (Liquid Glass, Material 3 Expressive, Modo Simple) garantizada por
- * construcción.
+ * Sirve la MISMA web que GitHub Pages —empaquetada como assets/site.zip por el
+ * workflow de compilación y extraída a filesDir por SiteStorage— bajo el origen
+ * seguro https://appassets.androidplatform.net, con basePath /Sync-Git- intacto:
+ * paridad visual, funcional y de temas (Liquid Glass, Material 3 Expressive,
+ * Modo Simple) garantizada por construcción.
  *
  * Única diferencia respecto a la web: el inicio de sesión. La app usa el OAuth
- * oficial de GitHub (WebView → orbit://oauth/callback → code → token), y el
+ * oficial de GitHub (WebView → pantalla de GitHub → token nativo cifrado), y el
  * token se entrega a la web por sessionStorage('orbit.token'), la misma vía
  * que la web usa con el PAT, así que todo lo demás funciona exactamente igual.
  */
@@ -50,7 +50,6 @@ class MainActivity : AppCompatActivity() {
     companion object {
         const val APP_ORIGIN = "https://appassets.androidplatform.net"
         const val START_PATH = "/Sync-Git-/"
-        const val SITE_ASSETS = "site"
         const val SHELL_ASSET = "shell/app-shell.js"
     }
 
@@ -59,14 +58,12 @@ class MainActivity : AppCompatActivity() {
 
     @Volatile private var tokenForInjection: String? = null
     @Volatile private var shellScript: String? = null
+    @Volatile private var siteRoot: File? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private val ioExecutor = Executors.newSingleThreadExecutor()
 
-    private val assetLoader = WebViewAssetLoader.Builder()
-        .setDomain("appassets.androidplatform.net")
-        .addPathHandler("/Sync-Git-/", WebViewAssetLoader.PathHandler { path -> openSiteAsset(path) })
-        .addPathHandler("/", WebViewAssetLoader.PathHandler { path -> openSiteAsset(path) })
-        .build()
+    /** Se construye tras extraer site.zip (SiteStorage) y antes del primer loadUrl. */
+    @Volatile private var assetLoader: WebViewAssetLoader? = null
 
     private val oauthLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -100,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         applyChrome(dark = true)
 
         webView = WebView(this)
+        webView.setBackgroundColor(Color.parseColor("#06060a"))
         val root = FrameLayout(this)
         root.addView(
             webView,
@@ -133,7 +131,32 @@ class MainActivity : AppCompatActivity() {
         })
 
         CookieManager.getInstance().setAcceptCookie(true)
-        webView.loadUrl(APP_ORIGIN + START_PATH)
+        /* Extraer la web (assets/site.zip → filesDir/site) y solo entonces
+           montar el loader y cargar. Mientras se extrae (≈1 s) la pantalla ya
+           muestra el fondo del tema, sin flash blanco. */
+        ioExecutor.execute {
+            val dir = SiteStorage.ensureExtracted(this, BuildConfig.VERSION_CODE)
+            runOnUiThread {
+                siteRoot = dir
+                assetLoader = WebViewAssetLoader.Builder()
+                    .setDomain("appassets.androidplatform.net")
+                    .addPathHandler("/Sync-Git-/", WebViewAssetLoader.PathHandler { path -> openSiteAsset(path) })
+                    .addPathHandler("/", WebViewAssetLoader.PathHandler { path -> openSiteAsset(path) })
+                    .build()
+                if (dir == null) {
+                    webView.loadData(
+                        "<!doctype html><html><body style='background:#06060a;color:#c9d1d9;" +
+                            "font-family:sans-serif;display:flex;align-items:center;justify-content:center;" +
+                            "height:100%;margin:0'><p>No se pudo preparar la interfaz.<br/>Cierra y vuelve " +
+                            "a abrir la app.</p></body></html>",
+                        "text/html",
+                        "utf-8",
+                    )
+                } else {
+                    webView.loadUrl(APP_ORIGIN + START_PATH)
+                }
+            }
+        }
         handleOrbitData(intent?.data)
     }
 
@@ -198,7 +221,8 @@ class MainActivity : AppCompatActivity() {
             view: WebView,
             request: WebResourceRequest,
         ): WebResourceResponse? {
-            val resp = assetLoader.shouldInterceptRequest(request.url) ?: return null
+            val loader = assetLoader ?: return null
+            val resp = loader.shouldInterceptRequest(request.url) ?: return null
             val path = request.url.path ?: return resp
             // Páginas HTML del export (rutas con "/" final o .html): inyectar
             // el shell nativo. Los .txt RSC, _next y assets se sirven tal cual.
@@ -260,19 +284,28 @@ class MainActivity : AppCompatActivity() {
 
     /* ---------- inyección del shell + token en el HTML servido ---------- */
 
-    /** Sirve los assets de la web (assets/site) con directory-index y MIME. */
+    /** Sirve los archivos de la web extraída (filesDir/site) con directory-index y MIME. */
     private fun openSiteAsset(path: String): WebResourceResponse? {
+        val root = siteRoot ?: return null
         var p = path.trimStart('/')
         if (p.isEmpty() || p.endsWith("/")) p += "index.html"
-        val assetPath = SITE_ASSETS + "/" + p
+        val rootCanonical = root.canonicalPath + File.separator
+        var f = File(root, p)
+        if (f.isDirectory) f = File(f, "index.html")
+        if (!f.exists()) {
+            // Petición sin barra final sobre una ruta del export («/code»): Next
+            // genera «code/index.html» porque trailingSlash=true.
+            val asDir = File(root, "$p/index.html")
+            if (asDir.exists()) f = asDir else return null
+        }
         return try {
-            val stream = assets.open(assetPath)
-            val mime = guessMime(assetPath)
+            if (!f.canonicalPath.startsWith(rootCanonical)) return null
+            val mime = guessMime(p)
             val encoding = if (mime.startsWith("text/") ||
                 mime.endsWith("javascript") || mime.endsWith("json") ||
                 mime.endsWith("xml") || mime.endsWith("manifest+json")
             ) "utf-8" else null
-            WebResourceResponse(mime, encoding, stream)
+            WebResourceResponse(mime, encoding, f.inputStream())
         } catch (e: Exception) {
             null
         }

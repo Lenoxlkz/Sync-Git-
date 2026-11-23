@@ -10,18 +10,24 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 
 /**
- * OAuth oficial de GitHub para Orbit (flujo web application + PKCE S256).
+ * OAuth oficial de GitHub para Orbit. Dos flujos, el mismo token:
  *
- * 1. Autorización: https://github.com/login/oauth/authorize con client_id,
- *    redirect_uri=orbit://oauth/callback, TODOS los scopes, state y PKCE.
- * 2. GitHub redirige a la app con ?code=… (interceptado en el WebView o por
- *    el intent-filter orbit://oauth/callback).
- * 3. Intercambio: POST /login/oauth/access_token con code_verifier (PKCE).
- *    GitHub soporta PKCE desde julio 2025 para OAuth Apps y GitHub Apps.
- *    Si el OAuth es una OAuth App clásica que exige client_secret y hay uno
- *    configurado (BuildConfig desde el secret GITHUB_CLIENT_SECRET), se reintenta.
- * 4. Respaldo: flujo por dispositivo (/login/device/code), que funciona con
- *    client_id y ofrece los mismos scopes.
+ * Flujo A · Web application (necesita client_secret; secret
+ * GITHUB_CLIENT_SECRET en Actions):
+ *   1. Autorización: https://github.com/login/oauth/authorize con client_id,
+ *      redirect_uri=orbit://oauth/callback, TODOS los scopes, state y PKCE S256.
+ *   2. GitHub redirige a la app con ?code=… (interceptado en el WebView o por
+ *      el intent-filter orbit://oauth/callback).
+ *   3. Intercambio: POST /login/oauth/access_token con client_secret y el
+ *      code_verifier si la autorización incluyó PKCE. VERIFICADO contra el
+ *      endpoint real: para OAuth Apps el secret es imprescindible (sin él
+ *      responde incorrect_client_credentials; PKCE no lo sustituye).
+ *
+ * Flujo B · Device flow (funciona SOLO con client_id — verificado):
+ *   POST /login/device/code → código en pantalla → github.com/login/device →
+ *   polling de /login/oauth/access_token (grant_type device_code). Es el flujo
+ *   oficial de GitHub para apps sin backend ni secret; entrega el mismo token
+ *   con los mismos scopes.
  */
 object GitHubOAuth {
 
