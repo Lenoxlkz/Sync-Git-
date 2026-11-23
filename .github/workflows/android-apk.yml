@@ -120,3 +120,8 @@ jobs:
           - Compilado automáticamente con GitHub Actions a partir de \`main\`.
 
           **Instalación:** descarga el APK, ábrelo y acepta instalar desde fuentes desconocidas si es la primera vez."
+          # Blindaje: GitHub puede dejar el release como draft si el tag se
+          # recrea en caliente (visto en el run r6: draft tras create). Se
+          # fuerza a publicado para que /releases/tags/android-latest (descarga
+          # pública y actualizador de la app) siempre encuentre el APK.
+          gh release edit android-latest --draft=false || true
