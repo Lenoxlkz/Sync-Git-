@@ -60,8 +60,10 @@ el endpoint real (POST `/login/oauth/access_token`): GitHub responde
 una app comercial con este mismo patrón). Dos vías para dárselo:
 
 - **Embebido (cero fricción, como hacen las apps comerciales)**: secret
-  `GITHUB_CLIENT_SECRET` en Actions → el APK lo trae dentro (`BuildConfig`) →
-  el selector de cuentas funciona al instante y sin preguntas.
+  `CLIENT_SECRET` en Actions —GitHub no permite crear secretos con prefijo
+  `GITHUB_`, están reservados— mapeado a la env `GITHUB_CLIENT_SECRET` por el
+  workflow → el APK lo trae dentro (`BuildConfig`) → el selector de cuentas
+  funciona al instante y sin preguntas.
 - **Pedido una sola vez en la app**: sin secret embebido, la app muestra una
   pantalla propia la primera vez —con enlace directo a
   github.com/settings/developers → «Git Orbit» → «Generate a new client
