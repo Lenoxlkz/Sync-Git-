@@ -6,9 +6,10 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 /**
- * Almacén nativo del token OAuth. Se guarda cifrado con AES-256-GCM en
- * Keystore (EncryptedSharedPreferences); si el Keystore del dispositivo
- * falla, cae a SharedPreferences privadas de la app (sin exportar).
+ * Almacén nativo del token OAuth y del client_secret de la OAuth App. Se
+ * guarda cifrado con AES-256-GCM en Keystore (EncryptedSharedPreferences);
+ * si el Keystore del dispositivo falla, cae a SharedPreferences privadas de
+ * la app (sin exportar).
  */
 class TokenStore(context: Context) {
 
@@ -39,6 +40,16 @@ class TokenStore(context: Context) {
 
     fun getRefresh(): String? = prefs.getString(KEY_REFRESH, null)
 
+    /** Client_secret de la OAuth App: se pide UNA vez y queda cifrado aquí. */
+    fun saveSecret(secret: String) {
+        prefs.edit().putString(KEY_SECRET, secret).apply()
+    }
+
+    fun getSecret(): String? = prefs.getString(KEY_SECRET, null)
+
+    /** Desconectar: borra la sesión. El client_secret es configuración del
+     *  dispositivo (como el secret embebido de una app comercial) y sobrevive
+     *  al logout: el siguiente inicio de sesión va directo al selector. */
     fun clear() {
         prefs.edit()
             .remove(KEY_TOKEN)
@@ -50,6 +61,7 @@ class TokenStore(context: Context) {
     companion object {
         private const val KEY_TOKEN = "gh_token"
         private const val KEY_REFRESH = "gh_refresh"
+        private const val KEY_SECRET = "gh_client_secret"
         private const val KEY_LOGGED_OUT = "logged_out"
     }
 }

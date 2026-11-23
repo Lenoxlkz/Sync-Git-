@@ -1,6 +1,5 @@
 package com.syncgit.orbit
 
-import android.os.Build
 import android.util.Base64
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -10,27 +9,38 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 
 /**
- * OAuth oficial de GitHub para Orbit. Dos flujos, el mismo token:
+ * OAuth oficial de GitHub para Orbit, con selector de cuentas — el mismo
+ * patrón que usan las apps nativas con callback por deep link (GitSync, etc.):
  *
- * Flujo A · Web application (necesita client_secret; secret
- * GITHUB_CLIENT_SECRET en Actions):
- *   1. Autorización: https://github.com/login/oauth/authorize con client_id,
- *      redirect_uri=orbit://oauth/callback, TODOS los scopes, state y PKCE S256.
- *   2. GitHub redirige a la app con ?code=… (interceptado en el WebView o por
- *      el intent-filter orbit://oauth/callback).
- *   3. Intercambio: POST /login/oauth/access_token con client_secret y el
- *      code_verifier si la autorización incluyó PKCE. VERIFICADO contra el
- *      endpoint real: para OAuth Apps el secret es imprescindible (sin él
- *      responde incorrect_client_credentials; PKCE no lo sustituye).
+ *  1. La WebView dentro de la app abre la pantalla OFICIAL de selección de
+ *     cuenta de GitHub:
+ *       https://github.com/login/oauth/select_account
+ *         ?client_id=…&redirect_uri=orbit%3A%2F%2Foauth%2Fcallback
+ *         &response_type=code&scope=…&state=…&code_challenge=…
+ *         &code_challenge_method=S256
+ *  2. GitHub muestra de una vez las cuentas con sesión activa («Signed in as
+ *     … → Continue») o «Use a different account»; si la WebView no tiene
+ *     sesión, primero pide login y regresa al selector. VERIFICADO contra el
+ *     endpoint real: responde 302 a /login conservando el return_to con TODOS
+ *     los parámetros cuando no hay sesión.
+ *  3. Al elegir cuenta, GitHub redirige a orbit://oauth/callback?code=…
+ *     (interceptado por la WebView o por el intent-filter) y la app intercambia
+ *     el code por el token (PKCE S256 incluido como blindaje).
  *
- * Flujo B · Device flow (funciona SOLO con client_id — verificado):
- *   POST /login/device/code → código en pantalla → github.com/login/device →
- *   polling de /login/oauth/access_token (grant_type device_code). Es el flujo
- *   oficial de GitHub para apps sin backend ni secret; entrega el mismo token
- *   con los mismos scopes.
+ * VERIFICADO contra el endpoint real de intercambio (POST
+ * /login/oauth/access_token) con client_id reales y códigos en varios
+ * formatos: GitHub exige client_secret para TODAS las OAuth Apps — con o sin
+ * PKCE, sin él responde incorrect_client_credentials antes de mirar el code.
+ * Por eso el secret viaja embebido desde Actions (GITHUB_CLIENT_SECRET) o la
+ * app lo pide UNA vez y lo guarda cifrado (TokenStore).
+ *
+ * Respaldo: device flow oficial de GitHub (funciona solo con client_id,
+ * sin secret) vía github.com/login/device.
  */
 object GitHubOAuth {
 
+    /** Pantalla oficial de selección de cuenta de GitHub. */
+    private const val SELECT_ACCOUNT_URL = "https://github.com/login/oauth/select_account"
     private const val AUTH_URL = "https://github.com/login/oauth/authorize"
     private const val TOKEN_URL = "https://github.com/login/oauth/access_token"
     private const val DEVICE_URL = "https://github.com/login/device/code"
@@ -73,44 +83,78 @@ object GitHubOAuth {
         return Base64.encodeToString(digest, Base64.NO_PADDING or Base64.NO_WRAP or Base64.URL_SAFE)
     }
 
-    fun authorizeUrl(verifier: String, state: String): String {
-        return AUTH_URL +
+    /* ---------- URLs de autorización (cadena de respaldo) ---------- */
+
+    /** 1. Selector de cuentas: lo primero que ve el usuario (patrón GitSync). */
+    fun selectAccountUrl(verifier: String, state: String): String =
+        buildAuthorizeUrl(SELECT_ACCOUNT_URL, verifier, state, null)
+
+    /** 2. Autorización clásica con prompt=select_account (mismo selector). */
+    fun authorizeWithPromptUrl(verifier: String, state: String): String =
+        buildAuthorizeUrl(AUTH_URL, verifier, state, "prompt=select_account")
+
+    /** 3. Autorización clásica (respaldo final). */
+    fun classicAuthorizeUrl(verifier: String, state: String): String =
+        buildAuthorizeUrl(AUTH_URL, verifier, state, null)
+
+    /** Las tres variantes, por si GitHub retirara alguna ruta. */
+    fun authorizeUrls(verifier: String, state: String): List<String> = listOf(
+        selectAccountUrl(verifier, state),
+        authorizeWithPromptUrl(verifier, state),
+        classicAuthorizeUrl(verifier, state),
+    )
+
+    private fun buildAuthorizeUrl(
+        base: String,
+        verifier: String,
+        state: String,
+        extra: String?,
+    ): String {
+        var url = base +
             "?client_id=" + enc(BuildConfig.GITHUB_CLIENT_ID) +
             "&redirect_uri=" + enc(BuildConfig.GITHUB_REDIRECT_URI) +
+            "&response_type=code" +
             "&scope=" + enc(BuildConfig.GITHUB_SCOPES) +
             "&state=" + enc(state) +
             "&code_challenge=" + enc(s256(verifier)) +
             "&code_challenge_method=S256"
+        if (!extra.isNullOrBlank()) url += "&" + extra
+        return url
     }
 
     /* ---------- intercambio code → token ---------- */
 
-    fun exchangeCode(code: String, verifier: String): ExchangeResult {
-        // 1) PKCE sin client secret (GitHub Apps / OAuth con PKCE)
-        var r = exchangeOnce(code, verifier, null)
-        if (r.token != null) return r
-        // 2) Reintento con client secret si está configurado (OAuth App clásica)
-        val needsSecret = r.error == "incorrect_client_credentials" ||
-            (r.errorDescription ?: "").contains("secret", ignoreCase = true)
-        if (needsSecret && BuildConfig.GITHUB_CLIENT_SECRET.isNotBlank()) {
-            val r2 = exchangeOnce(code, verifier, BuildConfig.GITHUB_CLIENT_SECRET)
-            if (r2.token != null) return r2
-            return r2
+    /**
+     * Intercambia el code por el token. El client_secret es imprescindible
+     * (verificado contra GitHub: sin él responde incorrect_client_credentials
+     * con o sin PKCE); PKCE S256 va siempre; el redirect_uri debe ser
+     * EXACTAMENTE el mismo que en la autorización.
+     */
+    fun exchangeCode(code: String, verifier: String, clientSecret: String?): ExchangeResult {
+        if (clientSecret.isNullOrBlank()) {
+            return ExchangeResult(
+                null,
+                null,
+                "missing_client_secret",
+                "GitHub exige el client_secret de la OAuth App para completar el inicio de " +
+                    "sesión web (verificado: sin él responde incorrect_client_credentials).",
+            )
         }
-        return r
-    }
-
-    private fun exchangeOnce(code: String, verifier: String, secret: String?): ExchangeResult {
         val body = JSONObject()
             .put("client_id", BuildConfig.GITHUB_CLIENT_ID)
+            .put("client_secret", clientSecret)
             .put("code", code)
             .put("redirect_uri", BuildConfig.GITHUB_REDIRECT_URI)
             .put("code_verifier", verifier)
-        if (secret != null) body.put("client_secret", secret)
         val (http, json) = postJson(TOKEN_URL, body)
         val token = json.optString("access_token", "")
         if (token.isNotBlank()) {
-            return ExchangeResult(token, json.optString("refresh_token", "").ifBlank { null }, null, null)
+            return ExchangeResult(
+                token,
+                json.optString("refresh_token", "").ifBlank { null },
+                null,
+                null,
+            )
         }
         val error = json.optString("error", "").ifBlank { "error" }
         val desc = json.optString("error_description", "").ifBlank {
@@ -149,7 +193,12 @@ object GitHubOAuth {
         val (http, json) = postJson(TOKEN_URL, body)
         val token = json.optString("access_token", "")
         if (token.isNotBlank()) {
-            return PollResult(token, json.optString("refresh_token", "").ifBlank { null }, null, null)
+            return PollResult(
+                token,
+                json.optString("refresh_token", "").ifBlank { null },
+                null,
+                null,
+            )
         }
         val error = json.optString("error", "").ifBlank { "error" }
         val desc = json.optString("error_description", "").ifBlank {

@@ -41,9 +41,10 @@ import java.util.concurrent.Executors
  * Modo Simple) garantizada por construcción.
  *
  * Única diferencia respecto a la web: el inicio de sesión. La app usa el OAuth
- * oficial de GitHub (WebView → pantalla de GitHub → token nativo cifrado), y el
- * token se entrega a la web por sessionStorage('orbit.token'), la misma vía
- * que la web usa con el PAT, así que todo lo demás funciona exactamente igual.
+ * oficial de GitHub (WebView → selector de cuentas de GitHub → token nativo
+ * cifrado), y el token se entrega a la web por sessionStorage('orbit.token'),
+ * la misma vía que la web usa con el PAT, así que todo lo demás funciona
+ * exactamente igual.
  */
 class MainActivity : AppCompatActivity() {
 
@@ -197,8 +198,10 @@ class MainActivity : AppCompatActivity() {
             toast("Termina el inicio de sesión desde Control Center", "info")
             return
         }
+        val secret = tokenStore.getSecret()?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.GITHUB_CLIENT_SECRET.takeIf { it.isNotBlank() }
         ioExecutor.execute {
-            val r = GitHubOAuth.exchangeCode(code, verifier)
+            val r = GitHubOAuth.exchangeCode(code, verifier, secret)
             runOnUiThread {
                 if (r.token != null) {
                     tokenStore.save(r.token, r.refreshToken)
@@ -207,6 +210,13 @@ class MainActivity : AppCompatActivity() {
                     OAuthActivity.pendingState = null
                     webView.reload()
                     toast("Sesión iniciada con GitHub", "ok")
+                } else if (r.error == "missing_client_secret" ||
+                    r.error == "incorrect_client_credentials"
+                ) {
+                    toast(
+                        "Falta el client_secret: abre «Iniciar sesión con GitHub» y configúralo",
+                        "err",
+                    )
                 } else {
                     toast(r.errorDescription ?: "No se pudo completar el inicio de sesión", "err")
                 }
