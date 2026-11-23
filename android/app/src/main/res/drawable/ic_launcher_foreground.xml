@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Logo de Orbit: planeta + anillo + satélite (el mismo del AppShell web) -->
+    <group
+        android:scaleX="0.55"
+        android:scaleY="0.55"
+        android:pivotX="12"
+        android:pivotY="12">
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="1.6"
+            android:pathData="M8.8,12 A3.2,3.2 0 1,0 15.2,12 A3.2,3.2 0 1,0 8.8,12 Z" />
+        <group
+            android:rotation="-18"
+            android:pivotX="12"
+            android:pivotY="12">
+            <path
+                android:fillColor="#00000000"
+                android:strokeColor="#FFFFFF"
+                android:strokeWidth="1.6"
+                android:pathData="M2,12 A10,4.6 0 1,0 22,12 A10,4.6 0 1,0 2,12 Z" />
+        </group>
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M19.5,7.5 A1.5,1.5 0 1,0 22.5,7.5 A1.5,1.5 0 1,0 19.5,7.5 Z" />
+    </group>
+</vector>

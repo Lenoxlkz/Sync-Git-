@@ -1,0 +1,114 @@
+# Compila la app nativa de Orbit: reconstruye la web (npm ci + next build,
+# MISMO build que GitHub Pages), la copia dentro de los assets del APK y
+# genera el APK firmado con Gradle. La web desplegada en Pages no se toca.
+
+name: Build Orbit APK (Android)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node + dependencias (mismo build que la web de Pages)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Export estático de la web (next build → out/)
+        run: npm run build
+
+      - name: Verificar export
+        run: |
+          test -f out/index.html || { echo "Falta out/index.html"; exit 1; }
+          echo "Web exportada:"; du -sh out
+
+      - name: Copiar la web dentro de los assets de la app
+        run: |
+          rm -rf android/app/src/main/assets/site
+          mkdir -p android/app/src/main/assets/site
+          cp -r out/. android/app/src/main/assets/site/
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Preparar keystore de firma
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/orbit.keystore"
+            echo "KS_FILE=$RUNNER_TEMP/orbit.keystore" >> "$GITHUB_ENV"
+            echo "KS_PASS=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "KS_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "Usando keystore estable de los secrets"
+          else
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/orbit.keystore" \
+              -storepass orbitandroid -keypass orbitandroid -alias orbit \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=GitHub Orbit, OU=Personal, O=Orbit, C=CR"
+            echo "KS_FILE=$RUNNER_TEMP/orbit.keystore" >> "$GITHUB_ENV"
+            echo "KS_PASS=orbitandroid" >> "$GITHUB_ENV"
+            echo "KS_ALIAS=orbit" >> "$GITHUB_ENV"
+            echo "Keystore efímero generado (configura KEYSTORE_* para firma estable)"
+          fi
+
+      - name: Compilar APK release
+        working-directory: android
+        env:
+          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+        run: gradle assembleRelease --no-daemon
+
+      - name: Preparar APK
+        run: |
+          set -e
+          APK=$(ls android/app/build/outputs/apk/release/*.apk | head -1)
+          cp "$APK" Orbit-Android.apk
+          echo "APK final: $APK"
+
+      - name: Subir artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Orbit-Android-APK
+          path: Orbit-Android.apk
+          if-no-files-found: error
+
+      - name: Publicar en Releases (android-latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete android-latest --cleanup-tag -y || true
+          gh release create android-latest "Orbit-Android.apk#Orbit-Android-v4.6.0.apk" \
+            --title "Orbit para Android · compilación automática" \
+            --latest \
+            --notes "APK nativo de **GitHub Orbit** (misma web, empaquetada como app Android).
+
+          - Inicio de sesión por **OAuth oficial de GitHub** (WebView → orbit://oauth/callback → PKCE, todos los scopes).
+          - Paridad completa con la web: mismo build de Next.js que GitHub Pages, mismos temas (Liquid Glass, Material 3 Expressive, Modo Simple), mismas funciones.
+          - Compilado automáticamente con GitHub Actions a partir de \`main\`.
+
+          **Instalación:** descarga el APK, ábrelo y acepta instalar desde fuentes desconocidas si es la primera vez."
