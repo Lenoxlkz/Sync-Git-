@@ -29,6 +29,8 @@ import androidx.core.view.WindowCompat
 import androidx.webkit.WebViewAssetLoader
 import org.json.JSONObject
 import java.io.File
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.concurrent.Executors
 
 /**
@@ -62,6 +64,9 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var siteRoot: File? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private val ioExecutor = Executors.newSingleThreadExecutor()
+
+    /** APK de la actualización ya descargado y listo para instalar. */
+    @Volatile private var pendingApk: File? = null
 
     /** Se construye tras extraer site.zip (SiteStorage) y antes del primer loadUrl. */
     @Volatile private var assetLoader: WebViewAssetLoader? = null
@@ -427,6 +432,28 @@ class MainActivity : AppCompatActivity() {
         fun toast(msg: String, type: String) {
             runOnUiThread { this@MainActivity.toast(msg, type) }
         }
+
+        /* ---------- actualizaciones (updater de la app) ---------- */
+
+        /** versionCode instalado; la web lo compara con el del último APK
+            publicado en el release «android-latest» (versionCode = run de Actions). */
+        @JavascriptInterface
+        fun getVersionCode(): Int = BuildConfig.VERSION_CODE
+
+        /** Descarga el APK de la actualización con progreso de bytes:
+            window.__orbitUpdateProgress(pct) por cada % y
+            window.__orbitUpdateReady(ruta) | window.__orbitUpdateError(msg) al final. */
+        @JavascriptInterface
+        fun downloadUpdate(url: String, filename: String) {
+            ioExecutor.execute { downloadApkInternal(url, filename) }
+        }
+
+        /** Invoca el instalador del sistema (PackageInstaller) con el APK ya
+            descargado: actualización directa sin Play Store. */
+        @JavascriptInterface
+        fun installUpdate() {
+            runOnUiThread { installApkInternal() }
+        }
     }
 
     /* ---------- helpers ---------- */
@@ -481,6 +508,76 @@ class MainActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             runOnUiThread { toast("No se pudo guardar: ${e.message}", "err") }
+        }
+    }
+
+    /* ---------- updater: descarga nativa con progreso + instalación ---------- */
+
+    /** Ejecuta una función JS de la página (progreso/estado del updater). */
+    private fun jsEvent(fn: String, arg: String) {
+        runOnUiThread {
+            try { webView.evaluateJavascript("$fn($arg)", null) } catch (e: Exception) { /* página cerrada */ }
+        }
+    }
+
+    private fun downloadApkInternal(url: String, filename: String) {
+        try {
+            val safe = filename.ifBlank { "orbit-update.apk" }.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            val dir = File(getExternalFilesDir(null), "updates")
+            if (!dir.exists()) dir.mkdirs()
+            /* Deja solo el APK más reciente: los anteriores se borran. */
+            dir.listFiles { f -> f.name.endsWith(".apk") && f.name != safe }?.forEach { it.delete() }
+            val out = File(dir, safe)
+            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 20000
+                readTimeout = 30000
+                instanceFollowRedirects = true
+            }
+            val total = conn.contentLengthLong
+            var done = 0L
+            var lastPct = -1
+            conn.inputStream.use { input ->
+                out.outputStream().use { fos ->
+                    val buf = ByteArray(64 * 1024)
+                    while (true) {
+                        val n = input.read(buf)
+                        if (n < 0) break
+                        fos.write(buf, 0, n)
+                        done += n
+                        if (total > 0) {
+                            val pct = ((done * 100) / total).toInt()
+                            if (pct != lastPct) {
+                                lastPct = pct
+                                jsEvent("window.__orbitUpdateProgress", pct.toString())
+                            }
+                        }
+                    }
+                }
+            }
+            conn.disconnect()
+            pendingApk = out
+            jsEvent("window.__orbitUpdateReady", JSONObject.quote(out.absolutePath))
+        } catch (e: Exception) {
+            jsEvent("window.__orbitUpdateError", JSONObject.quote(e.message ?: "Error de red durante la descarga"))
+        }
+    }
+
+    private fun installApkInternal() {
+        try {
+            val apk = pendingApk
+                ?: File(getExternalFilesDir(null), "updates")
+                    .listFiles { f -> f.name.endsWith(".apk") }
+                    ?.maxByOrNull { it.lastModified() }
+                ?: throw IllegalStateException("No hay ningún APK descargado")
+            val uri = FileProvider.getUriForFile(this, "$packageName.files", apk)
+            startActivity(
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+            )
+        } catch (e: Exception) {
+            toast("No se pudo iniciar la instalación: ${e.message}", "err")
         }
     }
 }

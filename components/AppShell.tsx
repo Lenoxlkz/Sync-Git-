@@ -14,6 +14,7 @@ import { netKeep } from '@/lib/netkeep';
 import { canAutoRefresh, fireLive, humanLeft, liveInterval, onLive } from '@/lib/live';
 import { capsFromScopes, type Cap } from '@/lib/scopes';
 import { ToastStack } from './Toast';
+import UpdateSheet from './UpdateSheet';
 import { Diag } from './bits';
 import { IcSearch, IcDownload, IcKey, IcUser, IcFolder, IcShield, IcLock, IcX, IcList, IcRefresh } from './Icons';
 import {
@@ -292,6 +293,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Bóveda: desbloqueo */}
       <VaultSheetUnlock />
       <VaultSheetCreate />
+
+      {/* updater: aviso de nueva versión de la app APK (solo nativo) */}
+      <UpdateSheet />
 
       <ToastStack />
     </div>
