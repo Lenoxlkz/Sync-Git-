@@ -16,7 +16,7 @@ import { PatchView } from '@/components/diff';
 import { Md } from '@/lib/md';
 import {
   IcRefresh, IcCompare, IcCode, IcFile, IcCopy, IcDownload, IcEdit, IcEye,
-  IcUpload, IcX, IcFolder, IcBranch, IcArrowRight, IcAlert,
+  IcUpload, IcX, IcFolder, IcBranch, IcArrowRight, IcAlert, IcPlus,
 } from '@/components/Icons';
 
 interface CodeFile { path: string; size: number; sha: string }
@@ -45,6 +45,13 @@ export default function CodePage() {
   const [saving, setSaving] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
+  /* creación de archivos nuevos: raíz o subcarpeta (API de archivos de GitHub) */
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newFolder, setNewFolder] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newMsg, setNewMsg] = useState('');
+  const [creating, setCreating] = useState(false);
   const [err, setErr] = useState('');
   const [hitIdx, setHitIdx] = useState(0);
   const [pickRepo, setPickRepo] = useState(false);
@@ -228,6 +235,54 @@ export default function CodePage() {
     } finally { setSaving(false); }
   }
 
+  /* carpetas existentes en la rama actual (para el selector rápido del diálogo) */
+  const folders = useMemo(() => {
+    const s = new Set<string>();
+    files.forEach(f => {
+      const seg = f.path.split('/');
+      for (let i = 1; i < seg.length; i++) s.add(seg.slice(0, i).join('/'));
+    });
+    return [...s].sort((a, b) => a.localeCompare(b));
+  }, [files]);
+
+  /* Ruta final = carpeta (vacía = raíz) + nombre. Devuelve null si es inválida. */
+  function buildNewPath(): string | null {
+    const segs = (newFolder.trim() + '/' + newName.trim())
+      .replace(/\\/g, '/')
+      .split('/')
+      .map(s => s.trim())
+      .filter(Boolean);
+    if (!segs.length) return null;
+    if (segs.some(s => s === '.' || s === '..')) return null;
+    return segs.join('/');
+  }
+
+  /* Crear archivo nuevo con la API de archivos de GitHub
+     (PUT /repos/{repo}/contents/{ruta}: sin «sha» crea el archivo;
+     GitHub genera las carpetas intermedias y un commit en la rama). */
+  async function createFile() {
+    if (!repo) return;
+    const path = buildNewPath();
+    if (!path) { pushToast('Ruta inválida', 'err', 'Escribe un nombre de archivo (y una carpeta válida si la usas)'); return; }
+    if (files.some(f => f.path === path)) { pushToast('El archivo ya existe', 'err', path + ' — ábrelo y edítalo'); return; }
+    setCreating(true); setErr('');
+    try {
+      const bytes = new TextEncoder().encode(newContent);
+      let b64 = '';
+      const CH = 0x8000;
+      for (let i = 0; i < bytes.length; i += CH) b64 += String.fromCharCode(...bytes.subarray(i, i + CH));
+      await gh.putContents(repo, branch, path, newMsg.trim() || `new: ${path} desde Orbit`, btoa(b64));
+      setNewOpen(false);
+      logAct('commit', 'Archivo creado', path + ' @ ' + repo);
+      pushToast('Archivo creado', 'ok', `${path} · ${newFolder.trim() ? 'subcarpeta' : 'raíz'} · ${branch}`);
+      setNewName(''); setNewFolder(''); setNewContent(''); setNewMsg('');
+      await loadTree(repo, branch);
+      openFile(path, repo, branch);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'No se pudo crear el archivo');
+    } finally { setCreating(false); }
+  }
+
   function download() {
     if (!activeText || !active) return;
     const blob = new Blob([activeText], { type: 'text/plain' });
@@ -345,8 +400,14 @@ export default function CodePage() {
         <div className="code-grid">
           {/* árbol */}
           <div className="code-pane tree-pane" style={{ border: '1px solid var(--border)', borderRadius: 16, background: 'var(--surface)', padding: 10 }}>
-            <div style={{ position: 'relative' }}>
-              <GlassInput type="search" placeholder="Filtrar archivos…" value={filter} onChange={e => setFilter(e.target.value)} aria-label="Filtrar archivos" />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <GlassInput type="search" placeholder="Filtrar archivos…" value={filter} onChange={e => setFilter(e.target.value)} aria-label="Filtrar archivos" />
+              </div>
+              <GlassButton size="sm" icon={<IcPlus size={14} />} aria-label="Nuevo archivo"
+                onClick={() => { setNewName(''); setNewFolder(''); setNewContent(''); setNewMsg(''); setNewOpen(true); }}>
+                Nuevo
+              </GlassButton>
             </div>
             <div style={{ overflow: 'auto', marginTop: 8, maxHeight: 560 }}>
               {loadingTree && !files.length ? <div style={{ padding: 12 }}><Spinner size={20} /></div> : renderTree()}
@@ -463,6 +524,56 @@ export default function CodePage() {
           <GlassButton onClick={() => setSaveOpen(false)} disabled={saving}>Cancelar</GlassButton>
           <GlassButton variant="filled" tint="var(--orbit-accent)" disabled={saving} onClick={saveEdit}>
             {saving ? 'Creando commit…' : 'Crear commit'}
+          </GlassButton>
+        </div>
+      </GlassSheet>
+
+      <GlassSheet open={newOpen} onClose={() => { if (!creating) setNewOpen(false); }} aria-label="Nuevo archivo">
+        <h3 className="sheet-title"><IcPlus size={15} style={{ verticalAlign: '-2px' }} /> Nuevo archivo · {repo}</h3>
+        <p className="sheet-text">
+          Se creará con la API de archivos de GitHub en <b className="mono">{repo} · {branch}</b>.
+          Guárdalo en la <b>raíz del repo</b> o dentro de una <b>subcarpeta</b>: las carpetas intermedias
+          que no existan se crean automáticamente en el commit.
+        </p>
+        <div className="chips" style={{ marginBottom: 10 }}>
+          <button type="button" className={`chip${!newFolder.trim() ? ' acc' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setNewFolder('')}>
+            Raíz del repo
+          </button>
+          {folders.map(f => (
+            <button key={f} type="button" className={`chip${newFolder.trim() === f ? ' acc' : ''}`} style={{ cursor: 'pointer' }} onClick={() => setNewFolder(f)}>
+              {f}/
+            </button>
+          ))}
+        </div>
+        <GlassInput
+          placeholder="Carpeta destino (opcional) — p. ej. docs o src/components"
+          value={newFolder} onChange={e => setNewFolder(e.target.value)}
+          aria-label="Carpeta destino" tint="var(--orbit-accent)" style={{ marginBottom: 8 }}
+        />
+        <GlassInput
+          placeholder="Nombre del archivo — p. ej. notas.md"
+          value={newName} onChange={e => setNewName(e.target.value)}
+          aria-label="Nombre del archivo" tint="var(--orbit-accent)" style={{ marginBottom: 8 }}
+          onKeyDown={e => { if (e.key === 'Enter' && newName.trim() && !creating) void createFile(); }}
+        />
+        <textarea
+          className="code-edit" style={{ flex: 'none', minHeight: 130, maxHeight: 260, borderRadius: 12, border: '1px solid var(--border)' }}
+          spellCheck={false} placeholder="Contenido inicial del archivo (puede quedar vacío)"
+          value={newContent} onChange={e => setNewContent(e.target.value)} aria-label="Contenido inicial"
+        />
+        <GlassInput
+          placeholder="Mensaje del commit"
+          value={newMsg} onChange={e => setNewMsg(e.target.value)}
+          aria-label="Mensaje del commit del nuevo archivo" tint="var(--orbit-accent)" style={{ marginTop: 8 }}
+        />
+        <p className="tiny" style={{ marginTop: 8 }}>
+          Destino: <b className="mono">{buildNewPath() || 'archivo'}</b> — {newFolder.trim() ? 'subcarpeta' : 'raíz'} de <b className="mono">{branch}</b>.
+          Si lo dejas vacío el mensaje será «new: {buildNewPath() || 'archivo'} desde Orbit».
+        </p>
+        <div className="sheet-actions">
+          <GlassButton onClick={() => setNewOpen(false)} disabled={creating}>Cancelar</GlassButton>
+          <GlassButton variant="filled" tint="var(--orbit-accent)" icon={<IcPlus size={14} />} disabled={creating || !newName.trim()} onClick={createFile}>
+            {creating ? 'Creando archivo…' : 'Crear archivo'}
           </GlassButton>
         </div>
       </GlassSheet>
