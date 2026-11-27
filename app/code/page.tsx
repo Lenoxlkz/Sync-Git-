@@ -16,7 +16,7 @@ import { PatchView } from '@/components/diff';
 import { Md } from '@/lib/md';
 import {
   IcRefresh, IcCompare, IcCode, IcFile, IcCopy, IcDownload, IcEdit, IcEye,
-  IcUpload, IcX, IcFolder, IcBranch, IcArrowRight, IcAlert, IcPlus,
+  IcUpload, IcX, IcFolder, IcBranch, IcArrowRight, IcAlert, IcPlus, IcSearch,
 } from '@/components/Icons';
 
 interface CodeFile { path: string; size: number; sha: string }
@@ -63,8 +63,10 @@ export default function CodePage() {
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   /* contexto desde chat/ficha: abre repo (y archivo) automáticamente.
-     SIN contexto no se entra a ningún repo: se muestran los repos y el
-     usuario elige cuál revisar o editar (como en la web de GitHub). */
+     SIN contexto no se entra a ningún repo NI se abre modal alguno: la
+     página muestra directamente la parrilla de repos (estado vacío) y el
+     usuario elige cuál revisar o editar, como en la web de GitHub. El
+     RepoPicker solo se abre con el botón del repo o «Cambiar repo». */
   useEffect(() => {
     const ctx = consumeCodeCtx();
     const defRepo = ctx.repo || '';
@@ -80,8 +82,6 @@ export default function CodePage() {
         const t = setTimeout(() => openFile(ctx.file!, defRepo, defBranch), 500);
         return () => clearTimeout(t);
       }
-    } else {
-      setPickRepo(true); /* lista de repos para elegir al entrar */
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -303,7 +303,15 @@ export default function CodePage() {
   /* ---------- picker de repositorio ---------- */
   if (!repo) {
     return (
-      <Section title="Code Explorer" sub="Elige explícitamente el repositorio que quieres abrir — no se carga ninguno automáticamente">
+      <Section
+        title="Code Explorer"
+        sub="Elige explícitamente el repositorio que quieres abrir — no se carga ninguno automáticamente"
+        right={
+          <GlassButton size="sm" icon={<IcSearch size={14} />} onClick={() => setPickRepo(true)}>
+            Buscar repositorio
+          </GlassButton>
+        }
+      >
         <div className="grid-cards">
           {repos.map(r => (
             <button key={r.id} style={{ textAlign: 'left', border: 'none', background: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer' }}
